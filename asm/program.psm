@@ -206,13 +206,19 @@ rs232_echo:      					 ; check uart for data
                 					 ; read received byte
                 					 ; write it back out
                 					 ; loop again
+                
+                INPUT   s2, data_present
+                TEST    s2, s2              ; set flags
+                JUMP    Z,  loop            ; no data -> do nothing, loop
+                
+                INPUT   s2, uart_data_rx    ; read a byte
+                
+                LOAD    s1, ascii_SINQUOT
+                OUTPUT  s1, uart_data_tx
+                OUTPUT  s2, uart_data_tx    ; write it back out
+                OUTPUT  s1, uart_data_tx
 
-
-                ; LAB TASK #3
-                ; Write code to check if a byte has been
-                ; received by the uart.  If so, write it
-                ; back to the uart transmit port.  If not
-                ; don't do anything and just...
+                JUMP     loop              ; loop again
 
 
 ;================================================================
