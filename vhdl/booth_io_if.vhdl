@@ -96,12 +96,17 @@ begin
 
     P1 : process (clk, sys_rst) is
         
-        variable reset_regs_to_defaults : boolean := false;
-        variable reset_command_received : boolean := false;
-        variable start_command_received : boolean := false;
+        variable reset_regs_to_defaults : boolean;
+        variable reset_command_received : boolean;
+        variable start_command_received : boolean;
     
     
     begin
+        -- Reset these temporaries every time the process is entered
+        reset_regs_to_defaults := false;
+        reset_command_received := false;
+        start_command_received := false;
+        
         if (sys_rst='1') then
             reset_regs_to_defaults := true;
 
