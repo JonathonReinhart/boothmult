@@ -15,7 +15,17 @@ entity top_level_entity is
            leds : out std_logic_vector(7 downto 0);
            switches : in std_logic_vector(7 downto 0);
            rs232_rx : in std_logic;
-           rs232_tx : out std_logic);
+           rs232_tx : out std_logic;
+			  
+           LED_ERROR_1 : out std_logic;
+           LED_ERROR_2 : out std_logic;
+			  
+           GPIO_LED_C : out std_logic;
+           GPIO_LED_E : out std_logic;
+           GPIO_LED_N : out std_logic;
+           GPIO_LED_S : out std_logic;
+           GPIO_LED_W : out std_logic
+			  );
 end top_level_entity;
 
 architecture Behavioral of top_level_entity is
@@ -112,6 +122,14 @@ architecture Behavioral of top_level_entity is
 	signal rst_p : std_logic;
 
 begin
+
+	LED_ERROR_1 <= '1';
+	LED_ERROR_2 <= data_present;
+	GPIO_LED_C <= '0';
+	GPIO_LED_E <= '0';
+	GPIO_LED_N <= '0';
+	GPIO_LED_S <= '0';
+	GPIO_LED_W <= '0';
 
 
 -- Instantiate PicoBlaze and the instruction ROM.  This is simply
