@@ -83,13 +83,14 @@ architecture booth_io_if_TB_Arch of booth_io_if_TB is
 --- Resultant signals from booth_io_if
     -- system/pblaze side
     signal port_data_from_if    : std_logic_vector (7 downto 0);
-    signal rst_cmd     : std_logic;
     -- boothmult side
+    signal rst_cmd     : std_logic;
     signal start_cmd   : std_logic;
     signal multiplier : std_logic_vector (31 downto 0);
     signal multiplicand : std_logic_vector (31 downto 0);
     
-    
+--- Other signals
+    signal product_read : std_logic_vector (63 downto 0) := (others => '0');
     
     
 --- Constants
@@ -256,6 +257,24 @@ begin
         write_strobe <= '1', '0' after CLK_PER;
         wait for 2*CLK_PER;
         
+    -- Read STATUS register (simulate waiting for operation to complete)
+        for i in 0 to 4 loop
+            -- read reg 0x10
+            port_id <= INDEX_PORT;
+            port_data_to_if <= x"10";
+            write_strobe <= '1', '0' after CLK_PER;
+            wait for 2*CLK_PER;
+            port_id <= DATA_PORT;
+            port_data_to_if <= (others => 'Z');
+            read_strobe <= '1', '0' after CLK_PER;
+            wait for 2*CLK_PER;
+        end loop;
+        
+    -- Simulate completion.
+        product <= x"CAFEBABEB00B1EE5";
+        done_in <= '1';
+        wait for 2*CLK_PER;
+    
     -- Read STATUS register
         -- read reg 0x10
         port_id <= INDEX_PORT;
@@ -267,6 +286,107 @@ begin
         read_strobe <= '1', '0' after CLK_PER;
         wait for 2*CLK_PER;
 
+    -- Read 64-bit PRODUCT register into product_read temp signal.
+        -- read reg 0x08
+        port_id <= INDEX_PORT;
+        port_data_to_if <= x"08";
+        write_strobe <= '1', '0' after CLK_PER;
+        wait for 2*CLK_PER;
+        port_id <= DATA_PORT;
+        port_data_to_if <= (others => 'Z');
+        read_strobe <= '1', '0' after CLK_PER;
+        wait for CLK_PER;
+        product_read(7 downto 0) <= port_data_from_if;
+        wait for CLK_PER;
+        
+        -- read reg 0x09
+        port_id <= INDEX_PORT;
+        port_data_to_if <= x"09";
+        write_strobe <= '1', '0' after CLK_PER;
+        wait for 2*CLK_PER;
+        port_id <= DATA_PORT;
+        port_data_to_if <= (others => 'Z');
+        read_strobe <= '1', '0' after CLK_PER;
+        wait for CLK_PER;
+        product_read(15 downto 8) <= port_data_from_if;
+        wait for CLK_PER;
+        
+        -- read reg 0x0A
+        port_id <= INDEX_PORT;
+        port_data_to_if <= x"0A";
+        write_strobe <= '1', '0' after CLK_PER;
+        wait for 2*CLK_PER;
+        port_id <= DATA_PORT;
+        port_data_to_if <= (others => 'Z');
+        read_strobe <= '1', '0' after CLK_PER;
+        wait for CLK_PER;
+        product_read(23 downto 16) <= port_data_from_if;
+        wait for CLK_PER;
+        
+        -- read reg 0x0B
+        port_id <= INDEX_PORT;
+        port_data_to_if <= x"0B";
+        write_strobe <= '1', '0' after CLK_PER;
+        wait for 2*CLK_PER;
+        port_id <= DATA_PORT;
+        port_data_to_if <= (others => 'Z');
+        read_strobe <= '1', '0' after CLK_PER;
+        wait for CLK_PER;
+        product_read(31 downto 24) <= port_data_from_if;
+        wait for CLK_PER;
+        
+        -- read reg 0x0C
+        port_id <= INDEX_PORT;
+        port_data_to_if <= x"0C";
+        write_strobe <= '1', '0' after CLK_PER;
+        wait for 2*CLK_PER;
+        port_id <= DATA_PORT;
+        port_data_to_if <= (others => 'Z');
+        read_strobe <= '1', '0' after CLK_PER;
+        wait for CLK_PER;
+        product_read(39 downto 32) <= port_data_from_if;
+        wait for CLK_PER;
+
+        -- read reg 0x0D
+        port_id <= INDEX_PORT;
+        port_data_to_if <= x"0D";
+        write_strobe <= '1', '0' after CLK_PER;
+        wait for 2*CLK_PER;
+        port_id <= DATA_PORT;
+        port_data_to_if <= (others => 'Z');
+        read_strobe <= '1', '0' after CLK_PER;
+        wait for CLK_PER;
+        product_read(47 downto 40) <= port_data_from_if;
+        wait for CLK_PER;
+        
+        -- read reg 0x0E
+        port_id <= INDEX_PORT;
+        port_data_to_if <= x"0E";
+        write_strobe <= '1', '0' after CLK_PER;
+        wait for 2*CLK_PER;
+        port_id <= DATA_PORT;
+        port_data_to_if <= (others => 'Z');
+        read_strobe <= '1', '0' after CLK_PER;
+        wait for CLK_PER;
+        product_read(55 downto 48) <= port_data_from_if;
+        wait for CLK_PER;
+        
+        -- read reg 0x0F
+        port_id <= INDEX_PORT;
+        port_data_to_if <= x"0F";
+        write_strobe <= '1', '0' after CLK_PER;
+        wait for 2*CLK_PER;
+        port_id <= DATA_PORT;
+        port_data_to_if <= (others => 'Z');
+        read_strobe <= '1', '0' after CLK_PER;
+        wait for CLK_PER;
+        product_read(63 downto 56) <= port_data_from_if;
+        wait for CLK_PER;
+        
+        assert product_read = x"CAFEBABEB00B1EE5" report "product_read not CAFEBABEB00B1EE5" severity error;
+        
+        
+        
         wait;
         
     end process TESTING;
