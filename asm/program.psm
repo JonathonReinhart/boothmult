@@ -163,21 +163,25 @@ CONSTANT ascii_DEL        , 7F    ; ascii code
 cold_start:
     LOAD    s0, all_clear     ; zero out reg s0
 
+prompt_loop:    
     CALL    print_multiplier
     
     CALL    read_hex_char     ; read hex value into s0
-    LOAD    s1, s0
-    SL0     s1
-    SL0     s1
-    SL0     s1
-    SL0     s1
+    LOAD    s4, s0
+    SL0     s4
+    SL0     s4
+    SL0     s4
+    SL0     s4
     CALL    read_hex_char
-    OR      s1, s0
-    LOAD    s0, s1
-    
+    OR      s4, s0
+
     CALL    print_newline
     
+    LOAD    s0, s4
     CALL    print_hex_val       ; Print the value in s0
+    
+    CALL    print_newline
+    JUMP    prompt_loop
     
     
 deadend:
@@ -189,12 +193,14 @@ deadend:
 ; Attempts to read a hex char ('0'-'9', 'A'-'F') from the UART.
 ; If it is invalid, it is ignored.
 ; If it is valid, it prints it back out to the UART, and the result is stored in s0.
+; Destroys registers: s0, s1
 read_hex_char:
     INPUT   s0, data_present    ; check uart for data
     TEST    s0, s0              ; set flags
     JUMP    Z,  read_hex_char   ; no data -> do nothing, loop     
 
     INPUT   s0, uart_data_rx    ; read a byte
+    LOAD    s1, s0
 
     ; Is it in the range of '0'-'9'?
 read_hex_char__test_09:   
@@ -203,14 +209,18 @@ read_hex_char__test_09:
     COMPARE s0, ascii_COLON     ; '9'+1
     JUMP    NC, read_hex_char__test_AF         ; s0 > '9' -> Try 'A'-'F'
     SUB     s0, ascii_0         ; Return the value 0-9
-    RETURN
+    JUMP    read_hex_char__done
     
 read_hex_char__test_AF:
     COMPARE s0, ascii_A
     JUMP    C,  read_hex_char   ; s0 < 'A' -> invalid hex char
     COMPARE s0, ascii_G
     JUMP    NC, read_hex_char   ; s0 > 'F' -> invalid hex char
-    SUB     s0, ascii_A         ; Return the value A-F
+    SUB     s0, ascii_A         ;
+    ADD     s0, 0A              ; Return the value A-F
+    
+read_hex_char__done:
+    OUTPUT  s1, uart_data_tx
     RETURN
 
 ;================================================================
@@ -262,64 +272,66 @@ print_hex_char__go:                     ; Send the char out the UART and return
 
 ;================================================================
 
+; these all destroy s0
+
 print_newline:
-    LOAD    s1, ascii_CR
-    OUTPUT  s1, uart_data_tx
-    LOAD    s1, ascii_LF
-    OUTPUT  s1, uart_data_tx
+    LOAD    s0, ascii_CR
+    OUTPUT  s0, uart_data_tx
+    LOAD    s0, ascii_LF
+    OUTPUT  s0, uart_data_tx
     RETURN
 
 print_multiplicand:
     CALL    print_multipli
 
-    LOAD     s1, ascii_c
-    OUTPUT   s1, uart_data_tx
-    LOAD     s1, ascii_a
-    OUTPUT   s1, uart_data_tx
-    LOAD     s1, ascii_n
-    OUTPUT   s1, uart_data_tx
-    LOAD     s1, ascii_d
-    OUTPUT   s1, uart_data_tx
-    LOAD     s1, ascii_COLON
-    OUTPUT   s1, uart_data_tx
-    LOAD     s1, ascii_SPACE
-    OUTPUT   s1, uart_data_tx
+    LOAD     s0, ascii_c
+    OUTPUT   s0, uart_data_tx
+    LOAD     s0, ascii_a
+    OUTPUT   s0, uart_data_tx
+    LOAD     s0, ascii_n
+    OUTPUT   s0, uart_data_tx
+    LOAD     s0, ascii_d
+    OUTPUT   s0, uart_data_tx
+    LOAD     s0, ascii_COLON
+    OUTPUT   s0, uart_data_tx
+    LOAD     s0, ascii_SPACE
+    OUTPUT   s0, uart_data_tx
 
     RETURN
 
 print_multiplier:
     CALL    print_multipli
 
-    LOAD     s1, ascii_e
-    OUTPUT   s1, uart_data_tx
-    LOAD     s1, ascii_r
-    OUTPUT   s1, uart_data_tx
-    LOAD     s1, ascii_COLON
-    OUTPUT   s1, uart_data_tx
-    LOAD     s1, ascii_SPACE
-    OUTPUT   s1, uart_data_tx
+    LOAD     s0, ascii_e
+    OUTPUT   s0, uart_data_tx
+    LOAD     s0, ascii_r
+    OUTPUT   s0, uart_data_tx
+    LOAD     s0, ascii_COLON
+    OUTPUT   s0, uart_data_tx
+    LOAD     s0, ascii_SPACE
+    OUTPUT   s0, uart_data_tx
 
     RETURN
 
     
 ;; Prints "Multipli"
 print_multipli:
-    LOAD     s1, ascii_M
-    OUTPUT   s1, uart_data_tx
-    LOAD     s1, ascii_u
-    OUTPUT   s1, uart_data_tx
-    LOAD     s1, ascii_l
-    OUTPUT   s1, uart_data_tx
-    LOAD     s1, ascii_t
-    OUTPUT   s1, uart_data_tx
-    LOAD     s1, ascii_i
-    OUTPUT   s1, uart_data_tx
-    LOAD     s1, ascii_p
-    OUTPUT   s1, uart_data_tx
-    LOAD     s1, ascii_l
-    OUTPUT   s1, uart_data_tx
-    LOAD     s1, ascii_i
-    OUTPUT   s1, uart_data_tx
+    LOAD     s0, ascii_M
+    OUTPUT   s0, uart_data_tx
+    LOAD     s0, ascii_u
+    OUTPUT   s0, uart_data_tx
+    LOAD     s0, ascii_l
+    OUTPUT   s0, uart_data_tx
+    LOAD     s0, ascii_t
+    OUTPUT   s0, uart_data_tx
+    LOAD     s0, ascii_i
+    OUTPUT   s0, uart_data_tx
+    LOAD     s0, ascii_p
+    OUTPUT   s0, uart_data_tx
+    LOAD     s0, ascii_l
+    OUTPUT   s0, uart_data_tx
+    LOAD     s0, ascii_i
+    OUTPUT   s0, uart_data_tx
     
     RETURN
                    
