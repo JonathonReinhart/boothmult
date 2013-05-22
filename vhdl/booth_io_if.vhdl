@@ -79,8 +79,6 @@ architecture behavioral of booth_io_if is
     
     constant CTRL_RESET_BIT     : integer := 0;
     constant CTRL_START_BIT     : integer := 1;
-    --constant CTRL_RESET_MASK    : std_logic_vector (7 downto 0) := "00000001";
-    --constant CTRL_START_MASK    : std_logic_vector (7 downto 0) := "00000010";
     
     -- currently selected register (via "index" port)
     signal curreg               : std_logic_vector (7 downto 0);
@@ -89,8 +87,10 @@ architecture behavioral of booth_io_if is
     signal MULTIPLICAND         : std_logic_vector (N-1 downto 0);
     signal MULTIPLIER           : std_logic_vector (N-1 downto 0);
     signal PRODUCT              : std_logic_vector((2*N)-1 downto 0) := (others => '1');
-    signal STATUS0_BUSY         : std_logic := '0';
-    signal STATUS1_PROD_VALID   : std_logic := '0';
+    
+    signal STATUS               : std_logic_vector (7 downto 0) := (others => '0');
+    alias  STATUS0_BUSY         is STATUS(0);
+    alias  STATUS1_PROD_VALID   is STATUS(1);
     
 begin
 
@@ -147,11 +147,7 @@ begin
                         when REG_PRODUCT_6          =>  out_port <= PRODUCT(55 downto 48);
                         when REG_PRODUCT_7          =>  out_port <= PRODUCT(63 downto 56);      -- MSB
                         
-                        when REG_STATUS             => 
-                            out_port(0) <= STATUS0_BUSY;
-                            out_port(1) <= STATUS1_PROD_VALID;
-                            out_port <= (others => '1');
-                        
+                        when REG_STATUS             =>  out_port <= STATUS;                        
                         when others                 =>  out_port <= (others => '1');            -- Invalid
                     end case;
                     
@@ -252,8 +248,7 @@ begin
             MULTIPLICAND        <= (others => '0');
             MULTIPLIER          <= (others => '0');
             PRODUCT             <= (others => '1');
-            STATUS0_BUSY        <= '0';
-            STATUS1_PROD_VALID  <= '0';
+            STATUS              <= (others => '0');
             start_cmd <= '0';
         end if;
 

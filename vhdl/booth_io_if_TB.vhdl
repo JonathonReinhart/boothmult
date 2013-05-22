@@ -255,6 +255,17 @@ begin
         port_data_to_if <= x"02";
         write_strobe <= '1', '0' after CLK_PER;
         wait for 2*CLK_PER;
+        
+    -- Read STATUS register
+        -- read reg 0x10
+        port_id <= INDEX_PORT;
+        port_data_to_if <= x"10";
+        write_strobe <= '1', '0' after CLK_PER;
+        wait for 2*CLK_PER;
+        port_id <= DATA_PORT;
+        port_data_to_if <= (others => 'Z');
+        read_strobe <= '1', '0' after CLK_PER;
+        wait for 2*CLK_PER;
 
         wait;
         
