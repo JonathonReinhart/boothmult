@@ -107,11 +107,14 @@ begin
         reset_command_received := false;
         start_command_received := false;
         
-        if (sys_rst='1') then
+        if rising_edge(clk) and (sys_rst='1') then
             reset_regs_to_defaults := true;
-
-        elsif rising_edge(clk) then
-            
+            rst_cmd <= '0';     -- Special case, so he can be driven for one clock during reset command.
+        end if;
+        
+        
+        if rising_edge(clk) and (sys_rst='0') then
+        
         --------------------------------------------------------------------------------------------
         -- pBlaze I/O
         
@@ -211,6 +214,20 @@ begin
             end if; -- read_strobe or write_strobe
         
             
+        --------------------------------------------------------------------------------------------
+        -- Multiplier I/O
+            
+            -- Finished?
+            if (done_in='1') then
+                -- When the multiplier indicates it is finished, save the result to the register,
+                -- and update the status bits.
+                PRODUCT <= product_in;
+                STATUS0_BUSY <= '0';
+                STATUS1_PROD_VALID <= '1';
+            end if;
+            
+        ------------------------------
+        -- Update outputs
             -- Handle different commands
             if start_command_received then
                 start_cmd <= '1';       -- Pulse high for one clock
@@ -224,35 +241,22 @@ begin
             else
                 rst_cmd <= '0';
             end if;
+            
 
+        end if;     -- rising_edge(clk) and (sys_rst='0')
         
         
-        --------------------------------------------------------------------------------------------
-        -- Multiplier I/O
-            
-            -- Finished?
-            if (done_in='1') then
-                -- When the multiplier indicates it is finished, save the result to the register,
-                -- and update the status bits.
-                PRODUCT <= product_in;
-                STATUS0_BUSY <= '0';
-                STATUS1_PROD_VALID <= '1';
-            end if;
-            
-            
-            
-        end if;     -- rising_edge(clk)
-        
-        
-             
         if (reset_regs_to_defaults) then
             -- Reset all of our registers to their defaults
+            curreg              <= (others => '0');
             MULTIPLICAND        <= (others => '0');
             MULTIPLIER          <= (others => '0');
             PRODUCT             <= (others => '1');
             STATUS0_BUSY        <= '0';
             STATUS1_PROD_VALID  <= '0';
+            start_cmd <= '0';
         end if;
+
 
     end process P1;
     
