@@ -1,0 +1,1 @@
+"C:\Program Files (x86)\DOSBox-0.74\DOSBox.exe" -c "MOUNT C ." -c "C:" -c "KCPSM3.EXE program.psm" -c "EXIT"
