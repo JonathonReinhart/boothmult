@@ -1,5 +1,6 @@
 library ieee;
 use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
 
 entity booth_io_if_TB is
 end booth_io_if_TB;
@@ -8,7 +9,10 @@ architecture booth_io_if_TB_Arch of booth_io_if_TB is
 
 --- Components    
     component clockgen is
-        port ( clk : out std_logic );
+        port (         
+            clk : out std_logic;
+            rst : out std_logic
+        );
     end component;
     
     component booth_io_if is
@@ -77,10 +81,23 @@ architecture booth_io_if_TB_Arch of booth_io_if_TB is
     signal multiplicand_out : std_logic_vector (31 downto 0);
     signal product_in :  std_logic_vector (63 downto 0);
     
+    
+--- Constants
+    constant INDEX_PORT         : std_logic_vector := x"A0";
+    constant DATA_PORT          : std_logic_vector := x"A1";    
+    
 
 begin
+
+-- Instantiated components
+    CLOCK : clockgen
+    port map (
+        clk => clk,
+        rst => sys_rst
+    );
+    
     UUT : booth_io_if
-        port map (
+    port map (
         clk => clk,
         sys_rst => sys_rst,
         port_id => port_id,
@@ -100,12 +117,17 @@ begin
         multiplier_out => multiplier_out,
         multiplicand_out => multiplicand_out,
         product_in => product_in
-        );
+    );
 
+
+    
+-- Test process
 
     TESTING : process
     begin
 
+        wait for 60 ns;
+        port_id <= INDEX_PORT;
 
         wait;
         
