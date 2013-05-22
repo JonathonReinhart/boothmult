@@ -151,74 +151,178 @@ CONSTANT ascii_RBRACE     , 7D    ; ascii code
 CONSTANT ascii_TILDE      , 7E    ; ascii code
 CONSTANT ascii_DEL        , 7F    ; ascii code
 
+; Assembly notes:
+; COMPARE sX, sY        CARRY set if sY or kk > sX
+;                       ZERO  set if equal
+
+
 ;================================================================
 ; Actual assembly program goes here...
 ;================================================================
 
-cold_start:     LOAD     s0, all_clear     ; zero out reg s0
-                LOAD     s1, ascii_X       ;
-                OUTPUT   s1, uart_data_tx  ;
-                LOAD     s1, ascii_i       ;
-                OUTPUT   s1, uart_data_tx  ;
-                LOAD     s1, ascii_l       ;
-                OUTPUT   s1, uart_data_tx  ;
-                LOAD     s1, ascii_i       ;
-                OUTPUT   s1, uart_data_tx  ;
-                LOAD     s1, ascii_n       ;
-                OUTPUT   s1, uart_data_tx  ;
-                LOAD     s1, ascii_x       ;
-                OUTPUT   s1, uart_data_tx  ;
-                LOAD     s1, ascii_SPACE   ;
-                OUTPUT   s1, uart_data_tx  ;
-                LOAD     s1, ascii_R       ;
-                OUTPUT   s1, uart_data_tx  ;
-                LOAD     s1, ascii_u       ;
-                OUTPUT   s1, uart_data_tx  ;
-                LOAD     s1, ascii_l       ;
-                OUTPUT   s1, uart_data_tx  ;
-                LOAD     s1, ascii_e       ;
-                OUTPUT   s1, uart_data_tx  ;
-                LOAD     s1, ascii_s       ;
-                OUTPUT   s1, uart_data_tx  ;
-                LOAD     s1, ascii_EXCLAIM ;
-                OUTPUT   s1, uart_data_tx  ;
-                LOAD     s1, ascii_CR      ;
-                OUTPUT   s1, uart_data_tx  ;
-                LOAD     s1, ascii_LF      ;
-                OUTPUT   s1, uart_data_tx  ;
+cold_start:
+    LOAD    s0, all_clear     ; zero out reg s0
+
+    CALL    print_multiplier
+    
+    CALL    read_hex_char     ; read hex value into s0
+    LOAD    s1, s0
+    SL0     s1
+    SL0     s1
+    SL0     s1
+    SL0     s1
+    CALL    read_hex_char
+    OR      s1, s0
+    LOAD    s0, s1
+    
+    CALL    print_newline
+    
+    CALL    print_hex_val       ; Print the value in s0
+    
+    
+deadend:
+    JUMP    deadend
+
+;================================================================
+      
+; read_hex_char()
+; Attempts to read a hex char ('0'-'9', 'A'-'F') from the UART.
+; If it is invalid, it is ignored.
+; If it is valid, it prints it back out to the UART, and the result is stored in s0.
+read_hex_char:
+    INPUT   s0, data_present    ; check uart for data
+    TEST    s0, s0              ; set flags
+    JUMP    Z,  read_hex_char   ; no data -> do nothing, loop     
+
+    INPUT   s0, uart_data_rx    ; read a byte
+
+    ; Is it in the range of '0'-'9'?
+read_hex_char__test_09:   
+    COMPARE s0, ascii_0                 
+    JUMP    C,  read_hex_char   ; s0 < '0' -> invalid hex char
+    COMPARE s0, ascii_COLON     ; '9'+1
+    JUMP    NC, read_hex_char__test_AF         ; s0 > '9' -> Try 'A'-'F'
+    SUB     s0, ascii_0         ; Return the value 0-9
+    RETURN
+    
+read_hex_char__test_AF:
+    COMPARE s0, ascii_A
+    JUMP    C,  read_hex_char   ; s0 < 'A' -> invalid hex char
+    COMPARE s0, ascii_G
+    JUMP    NC, read_hex_char   ; s0 > 'F' -> invalid hex char
+    SUB     s0, ascii_A         ; Return the value A-F
+    RETURN
+
+;================================================================
+
+; Prints the hex value in s0.
+; Destroys registers: s0, s1, s2
+print_hex_val:
+    LOAD    s2, s0
+    
+    ; Print the high nibble
+    SR0     s0
+    SR0     s0
+    SR0     s0
+    SR0     s0
+    CALL    print_hex_char
+    
+    ; Print the low nibble
+    LOAD    s0, s2
+    CALL    print_hex_char
+    
+    ; Print an 'h' suffix
+    LOAD     s1, ascii_h
+    OUTPUT   s1, uart_data_tx
+
+    RETURN
+    
+    
+; Prints the lower nibble of s0 to the UART as ASCII hex.
+; Destroys registers: s0, s1
+print_hex_char:
+    AND     s0, 0F                      ; Mask off only low nibble
+    LOAD    s1, s0
+    
+    SUB     s1, 0A                      ; s1 -= 10
+    JUMP    C,  print_hex_char__lt10    ; s0 is less than 10. print as '0'-'9'
+    
+print_hex_char__ge10:                   ; >= 10. Already subtracted 10. Add to 'A'
+    LOAD    s0, s1
+    ADD     s0, ascii_A
+    JUMP    print_hex_char__go
+    
+print_hex_char__lt10:                   ; < 10. Add to '0'
+    ADD     s0, ascii_0
+
+print_hex_char__go:                     ; Send the char out the UART and return
+    OUTPUT  s0, uart_data_tx
+    RETURN
 
 
-                ; LAB TASK #2
-                ; Write code to output a short (10 characters
-                ; or less) message to the serial port.
+;================================================================
 
-loop:           INPUT    s1, switch_in     ; read switch state
-                OUTPUT   s1, leds_out	   ; write it to leds
+print_newline:
+    LOAD    s1, ascii_CR
+    OUTPUT  s1, uart_data_tx
+    LOAD    s1, ascii_LF
+    OUTPUT  s1, uart_data_tx
+    RETURN
 
+print_multiplicand:
+    CALL    print_multipli
 
-                ; LAB TASK #1
-                ; Write code to read the switch state and
-                ; then write it to the LED control port.
+    LOAD     s1, ascii_c
+    OUTPUT   s1, uart_data_tx
+    LOAD     s1, ascii_a
+    OUTPUT   s1, uart_data_tx
+    LOAD     s1, ascii_n
+    OUTPUT   s1, uart_data_tx
+    LOAD     s1, ascii_d
+    OUTPUT   s1, uart_data_tx
+    LOAD     s1, ascii_COLON
+    OUTPUT   s1, uart_data_tx
+    LOAD     s1, ascii_SPACE
+    OUTPUT   s1, uart_data_tx
 
-rs232_echo:      					 ; check uart for data
-                					 ; used to set flags
-                					 ; nothing, loop again
-                					 ; read received byte
-                					 ; write it back out
-                					 ; loop again
-                
-                INPUT   s2, data_present
-                TEST    s2, s2              ; set flags
-                JUMP    Z,  loop            ; no data -> do nothing, loop
-                
-                INPUT   s2, uart_data_rx    ; read a byte
-                
-                LOAD    s1, ascii_SINQUOT
-                OUTPUT  s1, uart_data_tx
-                OUTPUT  s2, uart_data_tx    ; write it back out
-                OUTPUT  s1, uart_data_tx
+    RETURN
 
-                JUMP     loop              ; loop again
+print_multiplier:
+    CALL    print_multipli
+
+    LOAD     s1, ascii_e
+    OUTPUT   s1, uart_data_tx
+    LOAD     s1, ascii_r
+    OUTPUT   s1, uart_data_tx
+    LOAD     s1, ascii_COLON
+    OUTPUT   s1, uart_data_tx
+    LOAD     s1, ascii_SPACE
+    OUTPUT   s1, uart_data_tx
+
+    RETURN
+
+    
+;; Prints "Multipli"
+print_multipli:
+    LOAD     s1, ascii_M
+    OUTPUT   s1, uart_data_tx
+    LOAD     s1, ascii_u
+    OUTPUT   s1, uart_data_tx
+    LOAD     s1, ascii_l
+    OUTPUT   s1, uart_data_tx
+    LOAD     s1, ascii_t
+    OUTPUT   s1, uart_data_tx
+    LOAD     s1, ascii_i
+    OUTPUT   s1, uart_data_tx
+    LOAD     s1, ascii_p
+    OUTPUT   s1, uart_data_tx
+    LOAD     s1, ascii_l
+    OUTPUT   s1, uart_data_tx
+    LOAD     s1, ascii_i
+    OUTPUT   s1, uart_data_tx
+    
+    RETURN
+                   
 
 
 ;================================================================
