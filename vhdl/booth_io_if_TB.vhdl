@@ -9,6 +9,10 @@ architecture booth_io_if_TB_Arch of booth_io_if_TB is
 
 --- Components    
     component clockgen is
+        generic (
+            PERIOD : time := 20 ns;
+            RST_DUR : integer := 2
+        );
         port (         
             clk : out std_logic;
             rst : out std_logic
@@ -60,37 +64,49 @@ architecture booth_io_if_TB_Arch of booth_io_if_TB is
     end component;
     
     
+-----------    
+--- Signals
+
+--- Testbench-driven signals
+    -- system/pblaze side
+    signal clk         : std_logic := '0';
+    signal sys_rst     : std_logic := '0';
+    signal port_id     : std_logic_vector (7 downto 0) := (others => 'Z');
+    signal port_data_to_if     : std_logic_vector (7 downto 0) := (others => '0');
+    signal write_strobe: std_logic := '0';    
+    signal read_strobe : std_logic := '0';
+    -- boothmult side
+    signal done_in     :  std_logic := '0';
+    signal product :  std_logic_vector (63 downto 0) := (others => '0');
+
     
---- Signals    
-    signal clk         : std_logic;
-    signal sys_rst     : std_logic;
-    signal port_id     : std_logic_vector (7 downto 0);
-        
-    signal out_port    : std_logic_vector (7 downto 0);
-    signal read_strobe : std_logic;
-        
-    signal in_port     : std_logic_vector (7 downto 0);
-    signal write_strobe: std_logic;
-        
-    --------------------------------------
-    
-    signal rst_cmd     : std_logic;          
+--- Resultant signals from booth_io_if
+    -- system/pblaze side
+    signal port_data_from_if    : std_logic_vector (7 downto 0);
+    signal rst_cmd     : std_logic;
+    -- boothmult side
     signal start_cmd   : std_logic;
-    signal done_in     :  std_logic;                        
-    signal multiplier_out : std_logic_vector (31 downto 0);
-    signal multiplicand_out : std_logic_vector (31 downto 0);
-    signal product_in :  std_logic_vector (63 downto 0);
+    signal multiplier : std_logic_vector (31 downto 0);
+    signal multiplicand : std_logic_vector (31 downto 0);
+    
+    
     
     
 --- Constants
+    constant CLK_PER            : time := 20 ns;
     constant INDEX_PORT         : std_logic_vector := x"A0";
     constant DATA_PORT          : std_logic_vector := x"A1";    
+    
     
 
 begin
 
 -- Instantiated components
     CLOCK : clockgen
+    generic map (
+        PERIOD => CLK_PER,
+        RST_DUR => 2
+    )
     port map (
         clk => clk,
         rst => sys_rst
@@ -102,10 +118,10 @@ begin
         sys_rst => sys_rst,
         port_id => port_id,
         
-        out_port => out_port,
+        out_port => port_data_from_if,
         read_strobe => read_strobe,
         
-        in_port => in_port,
+        in_port => port_data_to_if,
         write_strobe => write_strobe,
         
     --------------------------------------
@@ -114,9 +130,9 @@ begin
         start_cmd => start_cmd,
         done_in => done_in, 
         
-        multiplier_out => multiplier_out,
-        multiplicand_out => multiplicand_out,
-        product_in => product_in
+        multiplier_out => multiplier,
+        multiplicand_out => multiplicand,
+        product_in => product
     );
 
 
@@ -126,8 +142,119 @@ begin
     TESTING : process
     begin
 
-        wait for 60 ns;
+        --wait for (CLK_PER/2);
+        wait for 3*CLK_PER;
+        
+    -- Write 1 to RESET bit in COMMAND
+        -- 0x01 to reg 0x11
         port_id <= INDEX_PORT;
+        port_data_to_if <= x"11";
+        write_strobe <= '1', '0' after CLK_PER;
+        wait for 2*CLK_PER;
+        port_id <= DATA_PORT;
+        port_data_to_if <= x"01";
+        write_strobe <= '1', '0' after CLK_PER;
+        wait for 2*CLK_PER;
+        
+        -- TODO: assert that rst_cmd is driven. But for how long?
+        
+    -- Write 0xDEADBEEF to MULTIPLIER
+        -- 0xEF to reg 0x04
+        port_id <= INDEX_PORT;
+        port_data_to_if <= x"04";
+        write_strobe <= '1', '0' after CLK_PER;
+        wait for 2*CLK_PER;
+        port_id <= DATA_PORT;
+        port_data_to_if <= x"EF";
+        write_strobe <= '1', '0' after CLK_PER;
+        wait for 2*CLK_PER;
+        
+        -- 0xBE to reg 0x05
+        port_id <= INDEX_PORT;
+        port_data_to_if <= x"05";
+        write_strobe <= '1', '0' after CLK_PER;
+        wait for 2*CLK_PER;
+        port_id <= DATA_PORT;
+        port_data_to_if <= x"BE";
+        write_strobe <= '1', '0' after CLK_PER;
+        wait for 2*CLK_PER;
+        
+        -- 0xAD to reg 0x06
+        port_id <= INDEX_PORT;
+        port_data_to_if <= x"06";
+        write_strobe <= '1', '0' after CLK_PER;
+        wait for 2*CLK_PER;
+        port_id <= DATA_PORT;
+        port_data_to_if <= x"AD";
+        write_strobe <= '1', '0' after CLK_PER;
+        wait for 2*CLK_PER;
+        
+        -- 0xDE to reg 0x07
+        port_id <= INDEX_PORT;
+        port_data_to_if <= x"07";
+        write_strobe <= '1', '0' after CLK_PER;
+        wait for 2*CLK_PER;
+        port_id <= DATA_PORT;
+        port_data_to_if <= x"DE";
+        write_strobe <= '1', '0' after CLK_PER;
+        wait for 2*CLK_PER;
+        
+        assert multiplier = x"DEADBEEF" report "Multiplier not DEADBEEF" severity error;
+        
+        
+    -- Write 0x1337D00D to MULTIPLICAND
+        -- 0x0D to reg 0x00
+        port_id <= INDEX_PORT;
+        port_data_to_if <= x"00";
+        write_strobe <= '1', '0' after CLK_PER;
+        wait for 2*CLK_PER;
+        port_id <= DATA_PORT;
+        port_data_to_if <= x"0D";
+        write_strobe <= '1', '0' after CLK_PER;
+        wait for 2*CLK_PER;
+        
+        -- 0xD0 to reg 0x01
+        port_id <= INDEX_PORT;
+        port_data_to_if <= x"01";
+        write_strobe <= '1', '0' after CLK_PER;
+        wait for 2*CLK_PER;
+        port_id <= DATA_PORT;
+        port_data_to_if <= x"D0";
+        write_strobe <= '1', '0' after CLK_PER;
+        wait for 2*CLK_PER;
+        
+        -- 0x37 to reg 0x02
+        port_id <= INDEX_PORT;
+        port_data_to_if <= x"02";
+        write_strobe <= '1', '0' after CLK_PER;
+        wait for 2*CLK_PER;
+        port_id <= DATA_PORT;
+        port_data_to_if <= x"37";
+        write_strobe <= '1', '0' after CLK_PER;
+        wait for 2*CLK_PER;
+        
+        -- 0x13 to reg 0x03
+        port_id <= INDEX_PORT;
+        port_data_to_if <= x"03";
+        write_strobe <= '1', '0' after CLK_PER;
+        wait for 2*CLK_PER;
+        port_id <= DATA_PORT;
+        port_data_to_if <= x"13";
+        write_strobe <= '1', '0' after CLK_PER;
+        wait for 2*CLK_PER;
+        
+        assert multiplicand = x"1337D00D" report "Multiplicand not 1337D00D" severity error;
+
+    -- Write 1 to START bit in COMMAND
+        -- 0x02 to reg 0x11
+        port_id <= INDEX_PORT;
+        port_data_to_if <= x"11";
+        write_strobe <= '1', '0' after CLK_PER;
+        wait for 2*CLK_PER;
+        port_id <= DATA_PORT;
+        port_data_to_if <= x"02";
+        write_strobe <= '1', '0' after CLK_PER;
+        wait for 2*CLK_PER;
 
         wait;
         
