@@ -125,7 +125,7 @@
                         CALL test_hex_string                    ; s4 (LSB) - s7 (MSB) will have 32-bit value
                         JUMP C, prompt_input
                         ; TODO: Set X
-                        CALL print_dword_hex
+                        CALL transmit_X
                         JUMP prompt_input
                         
          set_Y_command: COMPARE s0, character_space
@@ -133,6 +133,7 @@
                         CALL test_hex_string                    ; s4 (LSB) - s7 (MSB) will have 32-bit value
                         JUMP C, prompt_input
                         ; TODO: Set Y
+                        CALL transmit_Y
                         JUMP prompt_input                        
             
 
@@ -176,10 +177,9 @@
                         
                         
                         
-            go_command: LOAD UART_data, character_G
-                        CALL send_to_UART
-                        LOAD UART_data, character_O
-                        CALL send_to_UART
+            go_command: CALL send_Calculating
+                        ; TODO: Do work!
+                        CALL send_Done
                         CALL send_CR
                         RETURN           
                         
@@ -528,6 +528,51 @@ fetch_char_from_memory: FETCH s0, (s1)                           ;read character
                         CALL send_to_UART
                         RETURN
                         ;
+                        ; Send 'Calculating...' string to the UART
+                        ;
+      send_Calculating: LOAD UART_data, character_C
+                        CALL send_to_UART
+                        LOAD UART_data, character_a
+                        CALL send_to_UART
+                        LOAD UART_data, character_l
+                        CALL send_to_UART
+                        LOAD UART_data, character_c
+                        CALL send_to_UART
+                        LOAD UART_data, character_u
+                        CALL send_to_UART
+                        LOAD UART_data, character_l
+                        CALL send_to_UART
+                        LOAD UART_data, character_a
+                        CALL send_to_UART
+                        LOAD UART_data, character_t
+                        CALL send_to_UART
+                        LOAD UART_data, character_i
+                        CALL send_to_UART
+                        LOAD UART_data, character_n
+                        CALL send_to_UART
+                        LOAD UART_data, character_g
+                        CALL send_to_UART
+                        LOAD UART_data, character_period
+                        CALL send_to_UART
+                        LOAD UART_data, character_period
+                        CALL send_to_UART
+                        LOAD UART_data, character_period
+                        CALL send_to_UART
+                        RETURN
+                        ;
+                        ; Send 'done' string to the UART
+                        ;
+             send_Done: LOAD UART_data, character_D
+                        CALL send_to_UART
+                        LOAD UART_data, character_o
+                        CALL send_to_UART
+                        LOAD UART_data, character_n
+                        CALL send_to_UART
+                        LOAD UART_data, character_e
+                        CALL send_to_UART
+                        RETURN
+                        
+                        ;
                         ;
                         ;Convert time to ASCII string in scratch pad memory.
                         ;
@@ -613,47 +658,6 @@ fetch_char_from_memory: FETCH s0, (s1)                           ;read character
                         COMPARE s0, 7B                           ;eliminate character codes above 'z' (7A hex)
                         RETURN NC
                         AND s0, DF                               ;mask bit5 to convert to upper case
-                        RETURN
-                        ;
-                        ;
-                        ;Convert character '0' to '9' to numerical value in range 0 to 9
-                        ;
-                        ;The character supplied in register s0. If the character is in the
-                        ;range '0' to '9', it is converted to the equivalent decimal value.
-                        ;Characters not in the range '0' to '9' are signified by the return
-                        ;with the CARRY flag set.
-                        ;
-                        ;Registers used s0.
-                        ;
-        1char_to_value: ADD s0, C6                               ;reject character codes above '9' (39 hex)
-                        RETURN C                                 ;carry flag is set
-                        SUB s0, F6                               ;reject character codes below '0' (30 hex)
-                        RETURN                                   ;carry is set if value not in range
-                        ;
-                        ;
-                        ;Determine the numerical value of a two character decimal string held in
-                        ;scratch pad memory such the result is in the range 0 to 99 (00 to 63 hex).
-                        ;
-                        ;The string must be stored as in two consecutive memory locations and the
-                        ;location of the first (tens) character supplied in the s1 register.
-                        ;The result is provided in register s2. Strings not using characters in the
-                        ;range '0' to '9' are signified by the return with the CARRY flag set.
-                        ;
-                        ;Registers used s0, s1 and s2.
-                        ;
-        2char_to_value: FETCH s0, (s1)                           ;read 'tens' character
-                        CALL 1char_to_value                      ;convert to numerical value
-                        RETURN C                                 ;bad character - CARRY set
-                        LOAD s2, s0
-                        SL0 s2                                   ;multiply 'tens' value by 10 (0A hex)
-                        SL0 s2
-                        ADD s2, s0
-                        SL0 s2
-                        ADD s1, 01                               ;read 'units' character
-                        FETCH s0, (s1)
-                        CALL 1char_to_value                      ;convert to numerical value
-                        RETURN C                                 ;bad character - CARRY set
-                        ADD s2, s0                               ;add units to result and clear CARRY flag
                         RETURN
 
                         
@@ -768,6 +772,7 @@ fetch_char_from_memory: FETCH s0, (s1)                           ;read character
                         CONSTANT character_greater_than, 3E
                         CONSTANT character_equals, 3D
                         CONSTANT character_space, 20
+                        CONSTANT character_period, 2E
                         CONSTANT character_exclaim, 21
                         CONSTANT character_CR, 0D                ;carriage return
                         CONSTANT character_question, 3F          ;'?'
