@@ -81,7 +81,7 @@ begin
     generic map ( N => 32 )
     port map (
         clk => clk,
-        reset => sys_rst,
+        reset => breset, --sys_rst,
         multiplier => tst_multiplier,
         multiplicand  => tst_multiplicand,
         product         => product_read,
@@ -108,6 +108,9 @@ begin
   breset <= '0';
   wait for CLK_PER;
   start_cmd <= '1';
+  wait for 3*CLK_PER;
+  
+  start_cmd <= '0';
   
 	wait;
         

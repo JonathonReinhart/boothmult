@@ -21,11 +21,9 @@ architecture boothmultarch of boothmult is
 
     signal a, s, p : SIGNED((2*N) downto 0);
 	signal pp : signed((2*N)-1 downto 0);
-	--signal dd : unsigned(0 downto 0);
 
 begin
 
-   --done <= '0';
 	a(2*N downto N+1) <= signed(multiplicand(N-1 downto 0));
 	a(N downto 0) <= (others => '0');
 	s(2*N downto N+1) <= signed(not(multiplicand(N-1 downto 0))) + 1;
@@ -37,9 +35,7 @@ begin
 mult: process(clk)
   variable count : integer := 0;
   variable todo  : signed(1 downto 0);
-  --variable letsgo : integer range 0 to 1 := 0;
-  variable ppp : signed((2*N) downto 0) := p;
-  --variable ddd  : unsigned(0 downto 0);
+  variable ppp : signed((2*N) downto 0);
   variable ddd  : boolean;
 begin
   
@@ -49,35 +45,26 @@ begin
   if rising_edge(clk) then
   
 	  if (reset = '1') then
+		 ppp := (others => '0');
+		 count := 0;
+		 ddd := false;
+	  elsif (start = '1') then
 		 ppp := p;
 		 count := 0;
-		 ddd := false; --"0";
-	  elsif (start = '0') then
-		 ppp := p;
-		 count := 0;
-		 ddd := false; --"0";
+		 ddd := false;
 	  elsif (count = N) then
-		 --ppp := ppp;
-		 ddd := true; --"0";
+		 ddd := true;
 	  else
-		 ---ddd := false; --"0";
 		 if (todo = "01") then
 			ppp := ppp + a;
 		 elsif (todo = "10") then
 			ppp := ppp + s;
-		 --elsif (todo = "00") then
-		--	ppp := ppp;
-		 --elsif (todo = "11") then
-		--	ppp := ppp;
 		 end if;
 		 count := count + 1;
 		 ppp := shift_right(ppp,1);
-		 --ppp := ppp sra 1;
 	  end if;
 		
 		pp(2*N-1 downto 0) <= ppp(2*N downto 1);
-		--dd <= ddd;
-		--done <= std_logic(ddd);
 		
 		if ddd then
 			done <= '1';
@@ -93,7 +80,6 @@ end process;
    
     product((2*N)-1) <= multiplier(N-1) xor multiplicand(N-1);
     product((2*N-2) downto 0) <= std_logic_vector(pp((2*N-2) downto 0));
-    --done <= std_logic(dd(0));
 
 end boothmultarch;
 
