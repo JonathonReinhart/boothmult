@@ -120,45 +120,43 @@ begin
             --------------------------------------------------------------------------------------------
             -- pBlaze I/O
             
-                -- Read (INPUT) operation from pBlaze?
-                if (read_strobe='1') then
+                -- Read (INPUT) operation from pBlaze - Assume this is always happening, ignore timing on read_strobe.
+                -- What port is pBlaze reading from
+                if (unsigned(port_id) = INDEX_PORT) then        -- Index port
+                    out_port <= curreg;
                     
-                    -- What port is pBlaze reading from
-                    if (unsigned(port_id) = INDEX_PORT) then        -- Index port
-                        out_port <= curreg;
+                elsif (unsigned(port_id) = DATA_PORT) then      -- Data port
+                    -- Reply with data, depending on current register index
+                    case curreg is
+                        when REG_MULTIPLICAND_0     =>  out_port <= MULTIPLICAND(7  downto 0 ); -- LSB
+                        when REG_MULTIPLICAND_1     =>  out_port <= MULTIPLICAND(15 downto 8 );
+                        when REG_MULTIPLICAND_2     =>  out_port <= MULTIPLICAND(23 downto 16);
+                        when REG_MULTIPLICAND_3     =>  out_port <= MULTIPLICAND(31 downto 24); -- MSB
                         
-                    elsif (unsigned(port_id) = DATA_PORT) then      -- Data port
-                        -- Reply with data, depending on current register index
-                        case curreg is
-                            when REG_MULTIPLICAND_0     =>  out_port <= MULTIPLICAND(7  downto 0 ); -- LSB
-                            when REG_MULTIPLICAND_1     =>  out_port <= MULTIPLICAND(15 downto 8 );
-                            when REG_MULTIPLICAND_2     =>  out_port <= MULTIPLICAND(23 downto 16);
-                            when REG_MULTIPLICAND_3     =>  out_port <= MULTIPLICAND(31 downto 24); -- MSB
-                            
-                            when REG_MULTIPLIER_0       =>  out_port <= MULTIPLIER(7  downto 0 );   -- LSB
-                            when REG_MULTIPLIER_1       =>  out_port <= MULTIPLIER(15 downto 8 );
-                            when REG_MULTIPLIER_2       =>  out_port <= MULTIPLIER(23 downto 16);
-                            when REG_MULTIPLIER_3       =>  out_port <= MULTIPLIER(31 downto 24);   -- MSB
-                            
-                            when REG_PRODUCT_0          =>  out_port <= PRODUCT(7  downto 0 );      -- LSB
-                            when REG_PRODUCT_1          =>  out_port <= PRODUCT(15 downto 8 );
-                            when REG_PRODUCT_2          =>  out_port <= PRODUCT(23 downto 16);
-                            when REG_PRODUCT_3          =>  out_port <= PRODUCT(31 downto 24);
-                            when REG_PRODUCT_4          =>  out_port <= PRODUCT(39 downto 32);
-                            when REG_PRODUCT_5          =>  out_port <= PRODUCT(47 downto 40);
-                            when REG_PRODUCT_6          =>  out_port <= PRODUCT(55 downto 48);
-                            when REG_PRODUCT_7          =>  out_port <= PRODUCT(63 downto 56);      -- MSB
-                            
-                            when REG_STATUS             =>  out_port <= STATUS;                        
-                            when others                 =>  out_port <= (others => '1');            -- Invalid
-                        end case;
+                        when REG_MULTIPLIER_0       =>  out_port <= MULTIPLIER(7  downto 0 );   -- LSB
+                        when REG_MULTIPLIER_1       =>  out_port <= MULTIPLIER(15 downto 8 );
+                        when REG_MULTIPLIER_2       =>  out_port <= MULTIPLIER(23 downto 16);
+                        when REG_MULTIPLIER_3       =>  out_port <= MULTIPLIER(31 downto 24);   -- MSB
                         
-                    else    -- Port not for us!
-                        out_port <= (others => 'Z');
-                    end if;
+                        when REG_PRODUCT_0          =>  out_port <= PRODUCT(7  downto 0 );      -- LSB
+                        when REG_PRODUCT_1          =>  out_port <= PRODUCT(15 downto 8 );
+                        when REG_PRODUCT_2          =>  out_port <= PRODUCT(23 downto 16);
+                        when REG_PRODUCT_3          =>  out_port <= PRODUCT(31 downto 24);
+                        when REG_PRODUCT_4          =>  out_port <= PRODUCT(39 downto 32);
+                        when REG_PRODUCT_5          =>  out_port <= PRODUCT(47 downto 40);
+                        when REG_PRODUCT_6          =>  out_port <= PRODUCT(55 downto 48);
+                        when REG_PRODUCT_7          =>  out_port <= PRODUCT(63 downto 56);      -- MSB
+                        
+                        when REG_STATUS             =>  out_port <= STATUS;                        
+                        when others                 =>  out_port <= (others => '1');            -- Invalid
+                    end case;
+                    
+                else    -- Port not for us!
+                    out_port <= (others => 'Z');
+                end if;
                     
                 -- Write (OUTPUT) operation from pBlaze?
-                elsif (write_strobe='1') then
+                if (write_strobe='1') then
                 
                     -- What port is pBlaze writing to
                     if (unsigned(port_id) = INDEX_PORT) then        -- Index port
@@ -208,7 +206,7 @@ begin
                     
                     end if; -- port_id
                 
-                end if; -- read_strobe or write_strobe
+                end if; -- write_strobe
             
                 
             --------------------------------------------------------------------------------------------
