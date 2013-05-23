@@ -86,8 +86,34 @@ architecture Behavioral of top_level_entity is
 		LOCKED_OUT : OUT std_logic
 		);
 	END COMPONENT;
+	
+	component booth_periph is
+    generic (
+        N : positive := 32                                  -- Factor bit width
+        );
+    port (
+        clk         : in std_logic;                         -- System clock (50 MHz)
+        sys_rst     : in std_logic;                         -- System Reset (active high)
+        port_id     : in std_logic_vector (7 downto 0);     -- Port ID, asserted by pBlaze
+        
+        -- I/O Data from BM module to pBlaze
+        -- TODO: Will out_port connect to MUX or be Hi-Z and connect directly to pBlaze?
+        out_port    : out std_logic_vector (7 downto 0);    -- 8-bit data out to pBlaze
+        read_strobe : in std_logic;                         -- strobed when pBlaze is reading from us
+        
+        -- I/O Data from pBlaze to BM module
+        in_port     : in std_logic_vector (7 downto 0);     -- 8-bit data in from pBlaze
+        write_strobe: in std_logic                          -- strobed when pBlaze is writing to us
+        );
+	end component;
+	
+	
+	
+	
 
 ------------------------------------------------------------------------------------
+signal sys_rst : std_logic;	-- TODO: Add an input pin
+
 --
 -- Signals used to connect KCPSM3 to program ROM and I/O logic
 --
@@ -121,11 +147,17 @@ signal        rx_half_full : std_logic;
 -- Signals for DCM
 signal clk55MHz : std_logic;
 
+  
+signal data_from_booth : std_logic_vector (7 downto 0);
+
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 --
 -- Start of circuit description
 --
 begin
+
+  sys_rst <= '0';
+
   --
   ----------------------------------------------------------------------------------------------------------------------------------
   -- KCPSM3 and the program memory 
@@ -142,7 +174,7 @@ begin
                    in_port => in_port,
                  interrupt => interrupt,
              interrupt_ack => interrupt_ack,
-                     reset => '0',
+                     reset => sys_rst,
                        clk => clk55MHz);
  
   program_rom: program
@@ -247,7 +279,7 @@ begin
   transmit: uart_tx 
   port map (            data_in => out_port, 
                    write_buffer => write_to_uart,
-                   reset_buffer => '0',
+                   reset_buffer => sys_rst,
                    en_16_x_baud => en_16_x_baud,
                      serial_out => tx,
                     buffer_full => tx_full,
@@ -258,7 +290,7 @@ begin
   port map (            serial_in => rx,
                          data_out => rx_data,
                       read_buffer => read_from_uart,
-                     reset_buffer => '0',
+                     reset_buffer => sys_rst,
                      en_16_x_baud => en_16_x_baud,
               buffer_data_present => rx_data_present,
                       buffer_full => rx_full,
@@ -287,6 +319,24 @@ begin
   end process baud_timer;
 
   ----------------------------------------------------------------------------------------------------------------------------------
+  
+  booth: booth_periph
+  port map (
+        clk => clk55MHz,
+        sys_rst => sys_rst,
+        port_id => port_id,
+		  
+        -- I/O Data from BM module to pBlaze
+        out_port => data_from_booth,	-- 8-bit data out to pBlaze
+        read_strobe => read_strobe,		-- strobed when pBlaze is reading from us                      
+        
+        -- I/O Data from pBlaze to BM module
+        in_port => out_port,  			-- 8-bit data in from pBlaze
+        write_strobe => write_strobe	-- strobed when pBlaze is writing to us                          
+		  );
+  
+
+  
 
 end Behavioral;
 
@@ -295,4 +345,5 @@ end Behavioral;
 -- END OF FILE uart_clock.vhd
 --
 ------------------------------------------------------------------------------------------------------------------------------------
+
 
