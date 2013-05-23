@@ -125,35 +125,55 @@
                         CALL test_hex_string                    ; s4 (LSB) - s7 (MSB) will have 32-bit value
                         JUMP C, prompt_input
                         ; TODO: Set X
+                        CALL print_dword_hex
                         JUMP prompt_input
+                        
          set_Y_command: COMPARE s0, character_space
                         JUMP NZ, bad_input_command
                         CALL test_hex_string                    ; s4 (LSB) - s7 (MSB) will have 32-bit value
                         JUMP C, prompt_input
                         ; TODO: Set Y
                         JUMP prompt_input                        
-                        
-      
-      
-      
-            transmit_X: LOAD UART_data, character_X
-                        CALL send_to_UART
-                        LOAD UART_data, character_equals
-                        CALL send_to_UART
-                        CALL send_CR
-                        RETURN
-            transmit_Y: LOAD UART_data, character_Y
-                        CALL send_to_UART
-                        LOAD UART_data, character_equals
-                        CALL send_to_UART
-                        CALL send_CR
-                        RETURN
+            
+
+
+
             transmit_P: LOAD UART_data, character_P
                         CALL send_to_UART
                         LOAD UART_data, character_equals
                         CALL send_to_UART
+                        ; TODO: Load s7:s4 with P[63:32]
+                        CALL print_dword_hex
+                        ; TODO: Load s7:s4 with P[63:32]
+                        CALL print_dword_hex
+                        JUMP print_h_CR          ; tail-call
+                        
+            transmit_X: LOAD UART_data, character_X
+                        CALL send_to_UART
+                        LOAD UART_data, character_equals
+                        CALL send_to_UART
+                        ; TODO: Load s7:s4 with X
+                        CALL print_dword_hex
+                        JUMP print_h_CR          ; tail-call
+                        
+            transmit_Y: LOAD UART_data, character_Y
+                        CALL send_to_UART
+                        LOAD UART_data, character_equals
+                        CALL send_to_UART
+                        ; TODO: Load s7:s4 with Y
+                        CALL print_dword_hex
+                        JUMP print_h_CR          ; tail-call
+                        
+            print_h_CR: LOAD UART_data, character_h
+                        CALL send_to_UART
                         CALL send_CR
                         RETURN
+                        
+                        
+                        
+                        
+                        
+                        
                         
                         
             go_command: LOAD UART_data, character_G
@@ -165,8 +185,20 @@
                         
                         
                         
-                        
-        test_hex_string: 
+                        ; Convert hex string in scratchpad memory at s1 from hex to bytes in s7 (MSB) s4 (LSB)
+                        ; TODO: Do a 4-byte shift to deal with partial strings?
+       test_hex_string: CALL hex2char_to_byte
+                        JUMP C, invalid_hex_string
+                        LOAD s7, s2
+                        CALL hex2char_to_byte
+                        JUMP C, invalid_hex_string
+                        LOAD s6, s2
+                        CALL hex2char_to_byte
+                        JUMP C, invalid_hex_string
+                        LOAD s5, s2
+                        CALL hex2char_to_byte
+                        JUMP C, invalid_hex_string
+                        LOAD s4, s2
                         LOAD s0, 00
                         SR0 s0                                   ;reset CARRY flag (with s0=0)
                         RETURN                                   ;hex string was OK
@@ -174,82 +206,58 @@
                         LOAD s0, 01
                         SR0 s0                                   ;set CARRY flag
                         RETURN                                   ;time string was bad                
+
+
                         
+                        ; prints a DWOR in s7 (MSB) - s4 (LSB) as hex to the UART   
+     print_dword_hex:   LOAD s0, s7
+                        CALL print_byte_hex
+                        LOAD s0, s6
+                        CALL print_byte_hex
+                        LOAD s0, s5
+                        CALL print_byte_hex
+                        LOAD s0, s4
+                        CALL print_byte_hex
+                        RETURN
                         
-                        ;
-                        ;
-                        ;
-                        ;Read an 'hh:mm:ss' time string and provide new values.
-                        ;
-                        ;The string must be provided in successive scratch pad memory locations
-                        ;with the s1 register containing the location of the first character.
-                        ;
-                        ;A correct time specification will result in the return of new values
-                        ;as follows:-
-                        ;
-                        ;       s6 = hours
-                        ;       s5 = minutes
-                        ;       s4 = seconds
-                        ;
-                        ;If the syntax is incorrect or values are not in the correct ranges an
-                        ;'Invalid Time' message will be transmitted and the CARRY flag will be set
-                        ;
-                        ;Registers used s0, s1, s6, s5 and s4
-                        ;
-      test_time_string: CALL 2char_to_value                      ;obtain hours value
-                        JUMP C, invalid_time                     ;test for non-decimal characters
-                        LOAD s6, s2                              ;remember hours
-                        ADD s1, 01                               ;increment memory pointer past hours
-                        CALL fetch_char_from_memory
-                        COMPARE s0, character_colon              ;test for colon
-                        JUMP NZ, invalid_time
-                        CALL 2char_to_value                      ;obtain minutes value
-                        JUMP C, invalid_time                     ;test for non-decimal characters
-                        LOAD s5, s2                              ;remember minutes
-                        ADD s1, 01                               ;increment memory pointer past minutes
-                        CALL fetch_char_from_memory
-                        COMPARE s0, character_colon              ;test for colon
-                        JUMP NZ, invalid_time
-                        CALL 2char_to_value                      ;obtain seconds value
-                        JUMP C, invalid_time                     ;test for non-decimal characters
-                        LOAD s4, s2                              ;remember minutes
-                        ADD s1, 01                               ;increment memory pointer past seconds
-                        CALL fetch_char_from_memory
-                        COMPARE s0, character_CR                 ;finish with carriage return
-                        JUMP NZ, invalid_time
-                        ;Have values for hh:mm:ss but need to test if each is valid range.
-                        COMPARE s6, hours_in_a_day
-                        JUMP NC, invalid_time
-                        COMPARE s5, minutes_in_an_hour
-                        JUMP NC, invalid_time
-                        COMPARE s4, seconds_in_a_minute
-                        JUMP NC, invalid_time
-                        LOAD s0, 00
-                        SR0 s0                                   ;reset CARRY flag (with s0=0)
-                        RETURN                                   ;time string was OK
-          invalid_time: CALL send_Invalid
-                        CALL send_space
-                        CALL send_Time
-                        LOAD s0, 01
-                        SR0 s0                                   ;set CARRY flag
-                        RETURN                                   ;time string was bad
+                        ; Prints the value in s0 as hex.
+                        ; Destroys registers: s0, s1, s2
+       print_byte_hex:  LOAD    s2, s0
+
+                        ; Print the high nibble
+                        LOAD    s0, s2
+                        SR0     s0
+                        SR0     s0
+                        SR0     s0
+                        SR0     s0
+                        CALL    print_hex_char
+
+                        ; Print the low nibble
+                        LOAD    s0, s2
+                        CALL    print_hex_char
+                        RETURN
                         
-                        
-           
-           
-           
-           update_time: RETURN      ; dummy
-                        
-                        
-                        
-                        
-                        
-                        
-                        
-                        
-                        
-                        
-                        
+                        ; Prints the lower nibble of s0 to the UART as ASCII hex.
+                        ; Destroys registers: s0, s1
+      print_hex_char:   AND     s0, 0F                      ; Mask off only low nibble
+                        LOAD    s1, s0
+
+                        SUB     s1, 0A                      ; s1 -= 10
+                        JUMP    C,  print_hex_char__lt10    ; s0 is less than 10. print as '0'-'9'
+
+                        print_hex_char__ge10:                   ; >= 10. Already subtracted 10. Add to 'A'
+                        LOAD    s0, s1
+                        ADD     s0, character_A
+                        JUMP    print_hex_char__go
+
+                        print_hex_char__lt10:                   ; < 10. Add to '0'
+                        ADD     s0, character_0
+
+                        print_hex_char__go:                     ; Send the char out the UART and return
+                        LOAD    UART_data, s0
+                        CALL    send_to_UART
+                        RETURN
+
                         
                         ;
                         ;
@@ -282,9 +290,7 @@ fetch_char_from_memory: FETCH s0, (s1)                           ;read character
                         ;
         read_from_UART: INPUT s0, UART_status_port               ;test Rx_FIFO buffer
                         TEST s0, rx_data_present
-                        JUMP NZ, read_character
-                        CALL update_time                         ;Perform useful operation whilst waiting
-                        JUMP read_from_UART
+                        JUMP Z, read_from_UART
         read_character: INPUT UART_data, UART_read_port          ;read from FIFO
                         CALL send_to_UART                        ;echo received character
                         RETURN
@@ -313,9 +319,7 @@ fetch_char_from_memory: FETCH s0, (s1)                           ;read character
                         ;
           send_to_UART: INPUT s0, UART_status_port               ;test Tx_FIFO buffer
                         TEST s0, tx_full
-                        JUMP Z, UART_write
-                        CALL update_time                         ;Perform useful operation whilst waiting
-                        JUMP send_to_UART
+                        JUMP NZ, send_to_UART
             UART_write: OUTPUT UART_data, UART_write_port
                         RETURN
                         
@@ -504,65 +508,6 @@ fetch_char_from_memory: FETCH s0, (s1)                           ;read character
                         CALL send_to_UART
                         RETURN
                         ;
-                        ;Send 'Time' string to the UART
-                        ;
-             send_Time: LOAD UART_data, character_T
-                        CALL send_to_UART
-                        LOAD UART_data, character_i
-                        CALL send_to_UART
-                        LOAD UART_data, character_m
-                        CALL send_to_UART
-                        LOAD UART_data, character_e
-                        CALL send_to_UART
-                        RETURN
-                        ;
-                        ;Send 'Alarm' string to the UART
-                        ;
-            send_Alarm: LOAD UART_data, character_A
-                        CALL send_to_UART
-                        LOAD UART_data, character_l
-                        CALL send_to_UART
-                        LOAD UART_data, character_a
-                        CALL send_to_UART
-                        LOAD UART_data, character_r
-                        CALL send_to_UART
-                        LOAD UART_data, character_m
-                        CALL send_to_UART
-                        RETURN
-                        ;
-                        ;Send 'OFF' string to the UART
-                        ;
-              send_OFF: LOAD UART_data, character_O
-                        CALL send_to_UART
-                        LOAD UART_data, character_F
-                        CALL send_to_UART
-                        CALL send_to_UART
-                        RETURN
-                        ;
-                        ;Send 'ON' string to the UART
-                        ;
-               send_ON: LOAD UART_data, character_O
-                        CALL send_to_UART
-                        LOAD UART_data, character_N
-                        CALL send_to_UART
-                        RETURN
-                        ;
-                        ;Send 'Active' string to the UART
-                        ;
-           send_Active: LOAD UART_data, character_A
-                        CALL send_to_UART
-                        LOAD UART_data, character_c
-                        CALL send_to_UART
-                        LOAD UART_data, character_t
-                        CALL send_to_UART
-                        LOAD UART_data, character_i
-                        CALL send_to_UART
-                        LOAD UART_data, character_v
-                        CALL send_to_UART
-                        LOAD UART_data, character_e
-                        CALL send_to_UART
-                        RETURN
-                        ;
                         ; Send 'Welcome!' string to the UART
                         ;
           send_Welcome: LOAD UART_data, character_W
@@ -711,6 +656,43 @@ fetch_char_from_memory: FETCH s0, (s1)                           ;read character
                         ADD s2, s0                               ;add units to result and clear CARRY flag
                         RETURN
 
+                        
+      hex1char_to_byte: CALL upper_case
+                        COMPARE s0, character_0
+                        RETURN C                                ; reject < '0' - CARRY set
+                        COMPARE s0, character_colon             ; '9'+1
+                        JUMP NC, test_AF
+                        SUB s0, character_0                     ; valid - CARRY not set
+                        RETURN
+               test_AF: COMPARE s0, character_A
+                        RETURN C                                ; reject < 'A' - CARRY set
+                        COMPARE s0, character_G
+                        JUMP NC, bad_AF
+                        SUB s0, character_A
+                        ADD s0, 0A
+                        RETURN
+                bad_AF: LOAD s0, 01
+                        SR0 s0                                   ;set CARRY flag
+                        RETURN 
+
+      hex2char_to_byte: CALL fetch_char_from_memory
+                        CALL hex1char_to_byte
+                        RETURN C
+                        LOAD s2, s0
+                        SL0 s2
+                        SL0 s2
+                        SL0 s2
+                        SL0 s2
+                        CALL fetch_char_from_memory
+                        CALL hex1char_to_byte
+                        RETURN C
+                        OR s2, s0
+                        RETURN
+                        
+                        
+
+                        
+                        
                         ;
                         ;
                         ;Useful constants
