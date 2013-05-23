@@ -2,6 +2,13 @@
                         ;
                         ;Ken Chapman - Xilinx Ltd - October 2003
                         ;
+                        
+                        ; TODO: Delete
+                        CONSTANT hours_in_a_day, 18              ;24 hours in a day
+                        CONSTANT minutes_in_an_hour, 3C          ;60 minutes in an hour
+                        CONSTANT seconds_in_a_minute, 3C         ;60 seconds in a minute
+                        
+                        
                         ;
                         ;Port definitions
                         ;
@@ -25,71 +32,28 @@
                         ;
                         NAMEREG sE, store_pointer                ;used to pass location of data in scratch pad memory
                         ;
-                        ;Two registers to form a 16-bit counter used to count
-                        ;interrupt pulses generated at 1us intervals.
-                        ;
-                        NAMEREG sD, int_counter_lsb              ;lower 8-bits
-                        NAMEREG sC, int_counter_msb              ;upper 8-bits
-                        ;
                         ;
                         ;Scratch Pad Memory Locations
-                        ;
-                        ;
-                        CONSTANT us_time_stamp_lsb, 00           ;16-bit micro-second time stamp
-                        CONSTANT us_time_stamp_msb, 01
-                        ;
-                        CONSTANT us_time_lsb, 02                 ;16-bit micro-second real time value
-                        CONSTANT us_time_msb, 03
-                        ;
-                        CONSTANT ms_time_lsb, 04                 ;16-bit milli-second real time value
-                        CONSTANT ms_time_msb, 05
-                        ;
-                        CONSTANT real_time_hours, 06             ;Current clock time
-                        CONSTANT real_time_minutes, 07
-                        CONSTANT real_time_seconds, 08
-                        ;
-                        CONSTANT alarm_time_hours, 09            ;Alarm time
-                        CONSTANT alarm_time_minutes, 0A
-                        CONSTANT alarm_time_seconds, 0B
                         ;
                         CONSTANT alarm_status, 0C                ;Alarm status
                         CONSTANT alarm_active, 01                ;    bit0 - Alarm is active
                         CONSTANT alarm_armed, 02                 ;    bit1 - Alarm is armed
                         ;
-                        CONSTANT time_preserve0, 10              ;storage for protection of registers
-                        CONSTANT time_preserve1, 11              ;used by the real time clock routine.
-                        CONSTANT time_preserve2, 12
-                        CONSTANT time_preserve3, 13
-                        CONSTANT time_preserve4, 14
-                        CONSTANT time_preserve5, 15
                         ;
                         ;UART character strings will be stored in scratch pad memory ending in carriage return.
                         ;A string can be up to 16 characters with the start location defined by this constant.
                         ;
                         CONSTANT string_start, 20
+                        CONSTANT string_max, 10
                         ;
                         ;
                         ;Initialise the system
                         ;
                         ;
-            cold_start: LOAD s0, 00                              ;clear all time values
-                        STORE s0, us_time_stamp_lsb
-                        STORE s0, us_time_stamp_msb
-                        STORE s0, us_time_lsb
-                        STORE s0, us_time_msb
-                        STORE s0, ms_time_lsb
-                        STORE s0, ms_time_msb
-                        STORE s0, real_time_hours
-                        STORE s0, real_time_minutes
-                        STORE s0, real_time_seconds
-                        STORE s0, alarm_time_hours
-                        STORE s0, alarm_time_minutes
-                        STORE s0, alarm_time_seconds
+            cold_start: LOAD s0, 00                              ;clear all values
                         STORE s0, alarm_status                   ;clear and disable alarm
-                        CALL alarm_drive                         ;turn off alarm control output port
-                        LOAD int_counter_lsb, 00                 ;clear 'us' interrupt counter
-                        LOAD int_counter_msb, 00
-                        ENABLE INTERRUPT                         ;enable the 1us interrupts
+                        CALL send_Welcome
+                        CALL send_CR
                         ;
                         ;
                         ;Start of the main program loop.
@@ -98,7 +62,7 @@
                         ;a command can be entered and interpreted.
                         ;
                         ;
-          prompt_input: CALL send_prompt                         ;Prompt 'KCPSM3>'
+          prompt_input: CALL send_prompt                         ;Prompt 'BOOTH>'
                         CALL receive_string                      ;obtain input string and maintain the time
                         ;
                         ;
@@ -110,10 +74,16 @@
                         CALL fetch_char_from_memory
                         COMPARE s0, character_CR                 ;carriage return does nothing
                         JUMP Z, prompt_input
-                        COMPARE s0, character_T                  ;start of 'TIME' command?
-                        JUMP Z, test_for_TIME
-                        COMPARE s0, character_A                  ;start of 'ALARM' command?
-                        JUMP Z, test_for_ALARM
+                        
+                        COMPARE s0, character_X                  ;'X' (Multiplier) command?
+                        JUMP Z, command_X
+                        COMPARE s0, character_Y                  ;'Y' (Multiplicand) command?
+                        JUMP Z, command_Y
+                        COMPARE s0, character_P                  ;'P' (Product) command?
+                        JUMP Z, command_P
+                        COMPARE s0, character_G                  ;start of 'GO' command?
+                        JUMP Z, test_for_GO
+                        
                         ;
                         ;trap other command starts here
                         ;
@@ -121,90 +91,91 @@
                         JUMP Z, prompt_input
                         ;
                         ;
-         test_for_TIME: CALL fetch_char_from_memory
-                        COMPARE s0, character_I                  ;test for rest of 'TIME'
-                        JUMP NZ, bad_input_command
+                        
+             command_X: ;now have a valid X command to process
                         CALL fetch_char_from_memory
-                        COMPARE s0, character_M
-                        JUMP NZ, bad_input_command
+                        COMPARE s0, character_CR                 ;carriage return means display X
+                        JUMP NZ, set_X_command
+                        CALL transmit_X                       ;transmit X to UART
+                        JUMP prompt_input
+             command_Y: ;now have a valid Y command to process
                         CALL fetch_char_from_memory
-                        COMPARE s0, character_E
+                        COMPARE s0, character_CR                 ;carriage return means display Y
+                        JUMP NZ, set_Y_command
+                        CALL transmit_Y                       ;transmit Y to UART
+                        JUMP prompt_input
+             command_P: ;now have a valid P command to process
+                        CALL fetch_char_from_memory
+                        COMPARE s0, character_CR                 ;carriage return means display P
                         JUMP NZ, bad_input_command
-                        ;now have a valid TIME command to process
+                        CALL transmit_P                       ;transmit P to UART
+                        JUMP prompt_input
+           test_for_GO: CALL fetch_char_from_memory
+                        COMPARE s0, character_O                  ;test for rest of 'GO'
+                        JUMP NZ, bad_input_command
+                        ;now have a valid GO command to process
                         CALL fetch_char_from_memory
                         COMPARE s0, character_CR                 ;carriage return means display time
-                        JUMP NZ, set_time_command
-                        CALL transmit_time                       ;transmit time to UART
+                        JUMP NZ, bad_input_command
+                        CALL go_command
                         JUMP prompt_input
-      set_time_command: COMPARE s0, character_space
+                        
+         set_X_command: COMPARE s0, character_space
                         JUMP NZ, bad_input_command
-                        CALL test_time_string                    ;interpret 'hh:mm:ss' string
-                        JUMP C, prompt_input                     ;test for invalid input
-                        STORE s6, real_time_hours                ;set new time into clock
-                        STORE s5, real_time_minutes
-                        STORE s4, real_time_seconds
-                        STORE s0, ms_time_lsb                    ;clear 'ms' counter (s0=00)
-                        STORE s0, ms_time_msb
-                        CALL transmit_time                       ;transmit new time to UART
+                        CALL test_hex_string                    ; s4 (LSB) - s7 (MSB) will have 32-bit value
+                        JUMP C, prompt_input
+                        ; TODO: Set X
                         JUMP prompt_input
-                        ;
-                        ;
-        test_for_ALARM: CALL fetch_char_from_memory
-                        COMPARE s0, character_L                  ;test for rest of 'ALARM'
+         set_Y_command: COMPARE s0, character_space
                         JUMP NZ, bad_input_command
-                        CALL fetch_char_from_memory
-                        COMPARE s0, character_A
-                        JUMP NZ, bad_input_command
-                        CALL fetch_char_from_memory
-                        COMPARE s0, character_R
-                        JUMP NZ, bad_input_command
-                        CALL fetch_char_from_memory
-                        COMPARE s0, character_M
-                        JUMP NZ, bad_input_command
-                        ;now have a valid ALARM command to process
-                        CALL fetch_char_from_memory
-                        COMPARE s0, character_CR                 ;carriage return means display alarm time
-                        JUMP NZ, set_alarm_command
-                        CALL transmit_alarm_time                 ;transmit time to UART
-                        JUMP prompt_input
-     set_alarm_command: COMPARE s0, character_space              ;test for ON or OFF command
-                        JUMP NZ, bad_input_command
-                        CALL fetch_char_from_memory
-                        COMPARE s0, character_O
-                        JUMP Z, set_alarm_on_off
-                        SUB s1, 01                               ;move memory pointer back to first character of 'hh:mm:ss' string
-                        CALL test_time_string                    ;interpret 'hh:mm:ss' string
-                        JUMP C, prompt_input                     ;test for invalid input
-                        STORE s6, alarm_time_hours               ;set new time into clock
-                        STORE s5, alarm_time_minutes
-                        STORE s4, alarm_time_seconds
-                        CALL transmit_alarm_time                 ;transmit new alarm time and status
-                        JUMP prompt_input
-      set_alarm_on_off: CALL fetch_char_from_memory
-                        COMPARE s0, character_N                  ;test for 'ON'
-                        JUMP NZ, test_OFF
-                        CALL fetch_char_from_memory
-                        COMPARE s0, character_CR
-                        JUMP NZ, bad_input_command
-                        FETCH s0, alarm_status                   ;turn alarm on
-                        OR s0, alarm_armed
-                        STORE s0, alarm_status
-                        CALL transmit_alarm_time                 ;transmit alarm time and status
-                        JUMP prompt_input
-              test_OFF: COMPARE s0, character_F                  ;test for for 'OFF'
-                        JUMP NZ, bad_input_command
-                        CALL fetch_char_from_memory
-                        COMPARE s0, character_F
-                        JUMP NZ, bad_input_command
-                        CALL fetch_char_from_memory
-                        COMPARE s0, character_CR
-                        JUMP NZ, bad_input_command
-                        LOAD s0, 00                              ;turn alarm off and stop an active alarm
-                        STORE s0, alarm_status
-                        CALL alarm_drive                         ;turn off alarm
-                        CALL transmit_alarm_time                 ;transmit alarm time and status
-                        JUMP prompt_input
-                        ;
+                        CALL test_hex_string                    ; s4 (LSB) - s7 (MSB) will have 32-bit value
+                        JUMP C, prompt_input
+                        ; TODO: Set Y
+                        JUMP prompt_input                        
+                        
+      
+      
+      
+            transmit_X: LOAD UART_data, character_X
+                        CALL send_to_UART
+                        LOAD UART_data, character_equals
+                        CALL send_to_UART
+                        CALL send_CR
+                        RETURN
+            transmit_Y: LOAD UART_data, character_Y
+                        CALL send_to_UART
+                        LOAD UART_data, character_equals
+                        CALL send_to_UART
+                        CALL send_CR
+                        RETURN
+            transmit_P: LOAD UART_data, character_P
+                        CALL send_to_UART
+                        LOAD UART_data, character_equals
+                        CALL send_to_UART
+                        CALL send_CR
+                        RETURN
+                        
+                        
+            go_command: LOAD UART_data, character_G
+                        CALL send_to_UART
+                        LOAD UART_data, character_O
+                        CALL send_to_UART
+                        CALL send_CR
+                        RETURN           
+                        
+                        
+                        
+                        
+        test_hex_string: 
+                        LOAD s0, 00
+                        SR0 s0                                   ;reset CARRY flag (with s0=0)
+                        RETURN                                   ;hex string was OK
+    invalid_hex_string: CALL send_Invalid
+                        LOAD s0, 01
+                        SR0 s0                                   ;set CARRY flag
+                        RETURN                                   ;time string was bad                
+                        
+                        
                         ;
                         ;
                         ;
@@ -262,6 +233,24 @@
                         LOAD s0, 01
                         SR0 s0                                   ;set CARRY flag
                         RETURN                                   ;time string was bad
+                        
+                        
+           
+           
+           
+           update_time: RETURN      ; dummy
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
                         ;
                         ;
                         ;Fetch character from memory, convert to upper case
@@ -329,86 +318,8 @@ fetch_char_from_memory: FETCH s0, (s1)                           ;read character
                         JUMP send_to_UART
             UART_write: OUTPUT UART_data, UART_write_port
                         RETURN
-                        ;
-                        ;
-                        ;
-                        ;
-                        ;Alarm output
-                        ;
-                        ;Uses the alarm status scratch pad memory to set or reset the alarm
-                        ;control bit on the alarm output port.
-                        ;
-                        ;Registers used s0
-                        ;
-           alarm_drive: FETCH s0, alarm_status                   ;read status
-                        AND s0, alarm_active                     ;isolate bit0
-                        OUTPUT s0, alarm_port
-                        RETURN
-                        ;
-                        ;
-                        ;
-                        ;
-                        ;
-                        ;Transmit the time to the UART port in the format hh:mm:ss and end
-                        ;with a carriage return.
-                        ;
-                        ;The time to converted must be stored in 3 scratch pad memory locations as
-                        ;defined below. A register named 'store_pointer' must provide the address of
-                        ;first location.
-                        ;
-                        ;        Address                Data
-                        ;
-                        ;     store_pointer      ----> hours
-                        ;     store_pointer + 1  ----> minutes
-                        ;     store_pointer + 1  ----> seconds
-                        ;
-                        ;The routine first converts the time into an ASCII string stored in scratch
-                        ;pad memory starting at a location specified by a constant named 'string_start'.
-                        ;The string will then be transmitted.
-                        ;
-                        ;Registers used s0, s1, s2, 'store_pointer' and 'UART_data'.
-                        ;
-         transmit_time: LOAD store_pointer, real_time_hours      ;locate current time in memory
-                        CALL time_to_ASCII
-                        CALL transmit_string
-                        RETURN
-                        ;
-                        ;
-                        ;Transmit the alarm time and status to the UART port in the format hh:mm:ss and
-                        ;ending with carriage return.
-                        ;
-                        ;The alarm time to converted must be stored in 3 scratch pad memory locations as
-                        ;defined below. A register named 'store_pointer' must provide the address of
-                        ;first location.
-                        ;
-                        ;        Address                Data
-                        ;
-                        ;     store_pointer      ----> hours
-                        ;     store_pointer + 1  ----> minutes
-                        ;     store_pointer + 1  ----> seconds
-                        ;
-                        ;The routine first converts the time into an ASCII string stored in scratch
-                        ;pad memory starting at a location specified by a constant named 'string_start'.
-                        ;The string will then be transmitted.
-                        ;
-                        ;Registers used s0, s1, s2, 'store_pointer' and 'UART_data'.
-                        ;
-   transmit_alarm_time: LOAD store_pointer, alarm_time_hours     ;locate alarm time in memory
-                        CALL time_to_ASCII
-                        CALL transmit_string
-                        CALL send_Alarm
-                        CALL send_space
-                        FETCH s0, alarm_status                   ;read alarm status
-                        TEST s0, alarm_active                    ;test for active
-                        JUMP Z, test_armed
-                        CALL send_Active
-                        RETURN
-            test_armed: TEST s0, alarm_armed                     ;test for on
-                        JUMP Z, alarm_is_off
-                        CALL send_ON
-                        RETURN
-          alarm_is_off: CALL send_OFF
-                        RETURN
+                        
+
                         ;
                         ;
                         ;Transmit ASCII string to UART
@@ -449,8 +360,8 @@ fetch_char_from_memory: FETCH s0, (s1)                           ;read character
                         ;Registers used s0, s1, s2 and 'UART_data'.
                         ;
         receive_string: LOAD s1, string_start                    ;locate start of string
-                        LOAD s2, s1                              ;compute 16 character address
-                        ADD s2, 10
+                        LOAD s2, s1                              ;compute string_max character address
+                        ADD s2, string_max
      receive_full_test: INPUT s0, UART_status_port               ;test Rx_FIFO buffer for full
                         TEST s0, rx_full
                         JUMP NZ, read_error
@@ -461,7 +372,7 @@ fetch_char_from_memory: FETCH s0, (s1)                           ;read character
                         COMPARE UART_data, character_BS          ;test for back space
                         JUMP Z, BS_edit
                         ADD s1, 01                               ;increment memory pointer
-                        COMPARE s1, s2                           ;test for pointer exceeding 16 characters
+                        COMPARE s1, s2                           ;test for pointer exceeding string_max characters
                         JUMP NZ, receive_full_test               ;next character
                         CALL send_backspace                      ;hold end of string position on terminal display
                BS_edit: SUB s1, 01                               ;memory pointer back one
@@ -555,20 +466,18 @@ fetch_char_from_memory: FETCH s0, (s1)                           ;read character
                         CALL send_to_UART
                         RETURN
                         ;
-                        ;Send 'KCPSM3>' prompt to the UART
+                        ;Send 'BOOTH>' prompt to the UART
                         ;
            send_prompt: CALL send_CR                             ;start new line
-                        LOAD UART_data, character_K
+                        LOAD UART_data, character_B
                         CALL send_to_UART
-                        LOAD UART_data, character_C
+                        LOAD UART_data, character_O
                         CALL send_to_UART
-                        LOAD UART_data, character_P
+                        LOAD UART_data, character_O
                         CALL send_to_UART
-                        LOAD UART_data, character_S
+                        LOAD UART_data, character_T
                         CALL send_to_UART
-                        LOAD UART_data, character_M
-                        CALL send_to_UART
-                        LOAD UART_data, character_3
+                        LOAD UART_data, character_H
                         CALL send_to_UART
                         ;
                         ;Send '>' character to the UART
@@ -654,6 +563,26 @@ fetch_char_from_memory: FETCH s0, (s1)                           ;read character
                         CALL send_to_UART
                         RETURN
                         ;
+                        ; Send 'Welcome!' string to the UART
+                        ;
+          send_Welcome: LOAD UART_data, character_W
+                        CALL send_to_UART
+                        LOAD UART_data, character_e
+                        CALL send_to_UART
+                        LOAD UART_data, character_l
+                        CALL send_to_UART
+                        LOAD UART_data, character_c
+                        CALL send_to_UART
+                        LOAD UART_data, character_o
+                        CALL send_to_UART
+                        LOAD UART_data, character_m
+                        CALL send_to_UART
+                        LOAD UART_data, character_e
+                        CALL send_to_UART
+                        LOAD UART_data, character_exclaim
+                        CALL send_to_UART
+                        RETURN
+                        ;
                         ;
                         ;Convert time to ASCII string in scratch pad memory.
                         ;
@@ -725,130 +654,6 @@ fetch_char_from_memory: FETCH s0, (s1)                           ;read character
                         RETURN
                         ;
                         ;
-                        ;
-                        ;
-                        ;Real Time Clock
-                        ;
-                        ;Uses the 1us interrupt counter [int_counter_msb,int_counter_lsb] to determine how many
-                        ;micro-seconds have elapsed since the last update. This allows for just over 65ms between
-                        ;updates. Complete multiples of 1000us are used to update a 16-bit milli-second counter held
-                        ;in scratch pad memory locations [ms_time_stamp_msb,ms_time_stamp_msb] which in turn
-                        ;is used to update the real time hours, minutes and seconds clock held in scratch pad
-                        ;memory locations 'real_time_hours', 'real_time_minutes' and 'real_time_seconds'.
-                        ;
-                        ;The routine uses default register names s0,s1,s2,s3,s4,s5. These are preserved in scratch pad
-                        ;memory during the routine and restored before returning.
-                        ;
-                        ;Useful constants for real time clock operations
-                        ;
-                        CONSTANT count_1000_lsb, E8              ;lower 8-bits of 1000 count value
-                        CONSTANT count_1000_msb, 03              ;upper 8-bits of 1000 count value
-                        CONSTANT hours_in_a_day, 18              ;24 hours in a day
-                        CONSTANT minutes_in_an_hour, 3C          ;60 minutes in an hour
-                        CONSTANT seconds_in_a_minute, 3C         ;60 seconds in a minute
-                        ;
-           update_time: STORE s0, time_preserve0                 ;preserve contents of registers used during routine
-                        STORE s1, time_preserve1
-                        STORE s2, time_preserve2
-                        STORE s3, time_preserve3
-                        STORE s4, time_preserve4
-                        STORE s5, time_preserve5
-                        ;
-                        FETCH s2, us_time_stamp_lsb              ;read the previous 'us' time stamp into [s3,s2]
-                        FETCH s3, us_time_stamp_msb
-                        DISABLE INTERRUPT                        ;Read and store current 'us' time stamp provided by the interrupt
-                        STORE int_counter_lsb, us_time_stamp_lsb ;counter. Interrupts are disabled to ensure that both bytes relate
-                        STORE int_counter_msb, us_time_stamp_msb ;to the same count value.
-                        ENABLE INTERRUPT
-                        FETCH s4, us_time_stamp_lsb              ;read the new 'us' time stamp in [s5,s4]
-                        FETCH s5, us_time_stamp_msb              ;
-                        SUB s4, s2                               ;calculate 'us' time difference [s5,s4] = [s5,s4] - [s3,s2]
-                        SUBCY s5, s3                             ;   (This works correctly even if counter has rolled over)
-                        FETCH s2, us_time_lsb                    ;read current 'us' time into [s3,s2]
-                        FETCH s3, us_time_msb
-                        ADD s2, s4                               ;add on the elapsed 'us' value [s3,s2] = [s3,s2] + [s5,s4]
-                        ADDCY s3, s5
-                        ;determine how many 1000us (1ms) units there are (if any) in current 'us' time
-                        LOAD s0, 00                              ;reset 'ms' counter
-           test_1000us: SUB s2, count_1000_lsb                   ;subtract 1000 from [s3,s2]
-                        SUBCY s3, count_1000_msb
-                        JUMP C, store_us_time                    ;Carry indicates [s3,s2] was less than 1000us
-                        ADD s0, 01                               ;increment 'ms' elapsed because [s3,s2] was more or equal to 1000us
-                        JUMP test_1000us                         ;repeat to see if more than 1ms has elapsed
-         store_us_time: ADD s2, count_1000_lsb                   ;add 1000 to restore 'us' value
-                        ADDCY s3, count_1000_msb
-                        STORE s2, us_time_lsb                    ;store the current value of 'us'
-                        STORE s3, us_time_msb
-                        ;s0 holds the number of 'ms' elapsed since last update (if any).
-                        FETCH s2, ms_time_lsb                    ;read current 'ms' time into [s3,s2]
-                        FETCH s3, ms_time_msb
-                        ADD s2, s0                               ;add on the elapsed 'ms' value [s3,s2] = [s3,s2] + s0
-                        ADDCY s3, 00
-                        ;determine if there are now more than 1000ms to form 1 second.
-                        LOAD s0, 00                              ;reset 'second' counter
-                        SUB s2, count_1000_lsb                   ;subtract 1000 from [s3,s2]
-                        SUBCY s3, count_1000_msb
-                        JUMP C, restore_ms_time                  ;Carry indicates [s3,s2] was less than 1000ms
-                        ADD s0, 01                               ;increment 'second' elapsed because [s3,s2] was more or equal to 1000ms
-                        JUMP store_ms_time                       ;new value of 'ms' is remainder of subtraction
-       restore_ms_time: ADD s2, count_1000_lsb                   ;add 1000 to restore 'ms' value
-                        ADDCY s3, count_1000_msb
-         store_ms_time: STORE s2, ms_time_lsb                    ;store the current value of 'ms'
-                        STORE s3, ms_time_msb
-                        ;s0 currently determines if one second needs to be added to the hh:mm:ss clock time
-                        FETCH s1, real_time_seconds              ;read seconds
-                        ADD s1, s0                               ;add one second if required by s0
-                        COMPARE s1, seconds_in_a_minute          ;test for 1 minute
-                        JUMP Z, inc_minutes
-                        STORE s1, real_time_seconds              ;store updated seconds
-                        JUMP time_update_complete
-           inc_minutes: LOAD s1, 00                              ;seconds become zero
-                        STORE s1, real_time_seconds
-                        FETCH s1, real_time_minutes              ;read minutes
-                        ADD s1, 01                               ;increment minutes
-                        COMPARE s1, minutes_in_an_hour           ;test for 1 hour
-                        JUMP Z, inc_hours
-                        STORE s1, real_time_minutes              ;store updated minutes
-                        JUMP time_update_complete
-             inc_hours: LOAD s1, 00                              ;minutes become zero
-                        STORE s1, real_time_minutes
-                        FETCH s1, real_time_hours                ;read hours
-                        ADD s1, 01                               ;increment hours
-                        COMPARE s1, hours_in_a_day               ;test for 24 hours
-                        JUMP Z, reset_hours
-                        STORE s1, real_time_hours                ;store updated hours
-                        JUMP time_update_complete
-           reset_hours: LOAD s1, 00                              ;hours become zero
-                        STORE s1, real_time_hours
-                        ;
-                        ;With the time updated, there is then a test for time=alarm time
-                        ;
-  time_update_complete: FETCH s0, real_time_hours
-                        FETCH s1, alarm_time_hours               ;compare hours
-                        COMPARE s0, s1
-                        JUMP NZ, finish_update
-                        FETCH s0, real_time_minutes              ;compare minutes
-                        FETCH s1, alarm_time_minutes
-                        COMPARE s0, s1
-                        JUMP NZ, finish_update
-                        FETCH s0, real_time_seconds              ;compare seconds
-                        FETCH s1, alarm_time_seconds
-                        COMPARE s0, s1
-                        JUMP NZ, finish_update
-                        FETCH s0, alarm_status                   ;test if alarm is turned on
-                        TEST s0, alarm_armed
-                        JUMP Z, finish_update                    ;alarm was off
-                        OR s0, alarm_active                      ;activate alarm
-                        STORE s0, alarm_status
-                        CALL alarm_drive
-         finish_update: FETCH s0, time_preserve0                 ;restore the register contents
-                        FETCH s1, time_preserve1
-                        FETCH s2, time_preserve2
-                        FETCH s3, time_preserve3
-                        FETCH s4, time_preserve4
-                        FETCH s5, time_preserve5
-                        RETURN
-                        ;
                         ;Convert character to upper case
                         ;
                         ;The character supplied in register s0.
@@ -905,27 +710,7 @@ fetch_char_from_memory: FETCH s0, (s1)                           ;read character
                         RETURN C                                 ;bad character - CARRY set
                         ADD s2, s0                               ;add units to result and clear CARRY flag
                         RETURN
-                        ;
-                        ;
-                        ;Interrupt service routine (ISR)
-                        ;
-                        ;The interrupt is used to increment a 16-bit counter formed with two registers
-                        ;called [int_counter_msb,int_counter_lsb]. This provides a count of the number
-                        ;of micro-seconds elapsed. The counter is 'free running' in that it will count
-                        ;up to 65,535 and then roll over to zero. The count value is then used in other
-                        ;parts of the program as required and where it is less time critical.
-                        ;
-                        ;The ISR only uses the specified counter registers
-                        ;
-                        ADDRESS 3FC
-                   ISR: ADD int_counter_lsb, 01                  ;add 1us to 16-bit counter
-                        ADDCY int_counter_msb, 00
-                        RETURNI ENABLE
-                        ;
-                        ;Interrupt vector
-                        ;
-                        ADDRESS 3FF
-                        JUMP ISR
+
                         ;
                         ;
                         ;Useful constants
@@ -1001,6 +786,7 @@ fetch_char_from_memory: FETCH s0, (s1)                           ;read character
                         CONSTANT character_greater_than, 3E
                         CONSTANT character_equals, 3D
                         CONSTANT character_space, 20
+                        CONSTANT character_exclaim, 21
                         CONSTANT character_CR, 0D                ;carriage return
                         CONSTANT character_question, 3F          ;'?'
                         CONSTANT character_dollar, 24
