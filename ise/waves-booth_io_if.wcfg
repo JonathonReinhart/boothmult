@@ -3,7 +3,7 @@
    <wave_state>
    </wave_state>
    <db_ref_list>
-      <db_ref path="C:/Users/Jonathon/Classwork/boothmult/ise/working_dir/booth_io_if_TB_isim_beh.wdb" id="1" type="auto">
+      <db_ref path="C:/Users/Jonathon/Classwork/boothmult_lab2base/ise/working_dir/booth_io_if_TB_isim_beh.wdb" id="1" type="auto">
          <top_modules>
             <top_module name="booth_io_if_tb" />
             <top_module name="numeric_std" />
@@ -11,7 +11,7 @@
          </top_modules>
       </db_ref>
    </db_ref_list>
-   <WVObjectSize size="17" />
+   <WVObjectSize size="14" />
    <wvobject fp_name="/booth_io_if_tb/clk" type="logic" db_ref_id="1">
       <obj_property name="ElementShortName">clk</obj_property>
       <obj_property name="ObjectShortName">clk</obj_property>
@@ -73,20 +73,6 @@
    <wvobject fp_name="/booth_io_if_tb/product_read" type="array" db_ref_id="1">
       <obj_property name="ElementShortName">product_read[63:0]</obj_property>
       <obj_property name="ObjectShortName">product_read[63:0]</obj_property>
-      <obj_property name="Radix">HEXRADIX</obj_property>
-   </wvobject>
-   <wvobject fp_name="/booth_io_if_tb/clk_per" type="other" db_ref_id="1">
-      <obj_property name="ElementShortName">clk_per</obj_property>
-      <obj_property name="ObjectShortName">clk_per</obj_property>
-   </wvobject>
-   <wvobject fp_name="/booth_io_if_tb/index_port" type="array" db_ref_id="1">
-      <obj_property name="ElementShortName">index_port[0:7]</obj_property>
-      <obj_property name="ObjectShortName">index_port[0:7]</obj_property>
-      <obj_property name="Radix">HEXRADIX</obj_property>
-   </wvobject>
-   <wvobject fp_name="/booth_io_if_tb/data_port" type="array" db_ref_id="1">
-      <obj_property name="ElementShortName">data_port[0:7]</obj_property>
-      <obj_property name="ObjectShortName">data_port[0:7]</obj_property>
       <obj_property name="Radix">HEXRADIX</obj_property>
    </wvobject>
 </wave_config>
