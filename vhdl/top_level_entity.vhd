@@ -5,7 +5,7 @@
 --
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
-use IEEE.STD_LOGIC_ARITH.ALL;
+--use IEEE.STD_LOGIC_ARITH.ALL;
 use IEEE.STD_LOGIC_UNSIGNED.ALL;
 --
 ------------------------------------------------------------------------------------
@@ -129,7 +129,7 @@ signal interrupt_ack   : std_logic;
 --
 -- Signals for connection of peripherals
 --
-signal uart_status_port : std_logic_vector(7 downto 0);
+signal uart_status_data : std_logic_vector(7 downto 0);
 --
 -- Signals for UART connections
 --
@@ -149,6 +149,12 @@ signal clk55MHz : std_logic;
 
   
 signal data_from_booth : std_logic_vector (7 downto 0);
+
+-- Port IDs
+constant UART_STATUS_PORT	: std_logic_vector(7 downto 0) := x"00";
+constant UART_DATA_PORT 	: std_logic_vector(7 downto 0) := x"01";		-- Rx and Tx
+constant BOOTH_INDEX_PORT 	: std_logic_vector(7 downto 0) := x"A0";
+constant BOOTH_DATA_PORT 	: std_logic_vector(7 downto 0) := x"A1";
 
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 --
@@ -205,7 +211,7 @@ begin
   -- UART FIFO status signals to form a bus
   --
 
-  uart_status_port <= "000" & rx_data_present & rx_full & rx_half_full & tx_full & tx_half_full ;
+  uart_status_data <= "000" & rx_data_present & rx_full & rx_half_full & tx_full & tx_half_full ;
 
   --
   -- The inputs connect via a pipelined multiplexer
@@ -215,14 +221,16 @@ begin
   begin
     if clk55MHz'event and clk55MHz='1' then
 
-      case port_id(0) is
+      case port_id is
 
-        
         -- read UART status at address 00 hex
-        when '0' =>    in_port <= uart_status_port;
+        when UART_STATUS_PORT =>    in_port <= uart_status_data;
 
         -- read UART receive data at address 01 hex
-        when '1' =>    in_port <= rx_data;
+        when UART_DATA_PORT =>    in_port <= rx_data;
+		  
+		  when BOOTH_INDEX_PORT => in_port <= data_from_booth;
+		  when BOOTH_DATA_PORT => in_port <= data_from_booth;
         
         -- Don't care used for all other addresses to ensure minimum logic implementation
         when others =>    in_port <= "XXXXXXXX";  
@@ -233,7 +241,19 @@ begin
       -- The fact that the read strobe will occur after the actual data is read by 
       -- the KCPSM3 is acceptable because it is really means 'I have read you'!
 
-      read_from_uart <= read_strobe and port_id(0); 
+		
+		if read_strobe='1' and (port_id = UART_DATA_PORT) then
+			read_from_uart <= '1';
+		else
+			read_from_uart <= '0';
+		end if;
+		
+		if write_strobe='1' and (port_id = UART_DATA_PORT) then
+			write_to_uart <= '1';
+		else
+			write_to_uart <= '0';
+		end if;
+		
 
     end if;
 
@@ -245,27 +265,8 @@ begin
   -- KCPSM3 output ports 
   ----------------------------------------------------------------------------------------------------------------------------------
   --
-   
-  output_ports: process(clk55MHz)
-  begin
-
-    if clk55MHz'event and clk55MHz='1' then
-      if write_strobe='1' then
 
 
-
-      end if;
-
-    end if; 
-
-  end process output_ports;
-
-  --
-  -- write to UART transmitter FIFO buffer at address 01 hex.
-  -- This is a combinatorial decode because the FIFO is the 'port register'.
-  --
-
-  write_to_uart <= write_strobe and port_id(0);
 
   --
   ----------------------------------------------------------------------------------------------------------------------------------
