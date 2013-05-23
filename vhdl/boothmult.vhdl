@@ -34,7 +34,7 @@ begin
 	p(N downto 1) <= signed(multiplier(N-1 downto 0));
 	p(0) <= '0';
 	
-mult: process(clk,reset)
+mult: process(clk)
   variable count : integer := 0;
   variable todo  : signed(1 downto 0);
   variable letsgo : integer range 0 to 1 := 0;
@@ -45,35 +45,39 @@ begin
   --testing code
   todo := ppp(1) & ppp(0);
   
-  if (reset = '1') then
-    ppp := p;
-    count := 0;
-    ddd := "0";
-  elsif (start = '0') then
-    ppp := p;
-    count := 0;
-    ddd := "0";
-  elsif (count = N) then
-    ppp := ppp;
-    ddd := "1";
-  elsif (clk'event and clk = '1') then
-    ddd := "0";
-    if (todo = "01") then
-      ppp := ppp + a;
-    elsif (todo = "10") then
-      ppp := ppp + s;
-    elsif (todo = "00") then
-      ppp := ppp;
-    elsif (todo = "11") then
-      ppp := ppp;
-    end if;
-    count := count + 1;
-    ppp := shift_right(ppp,1);
-    --ppp := ppp sra 1;
-  end if;
-   
-   pp(2*N-1 downto 0) <= ppp(2*N downto 1);
-   dd <= ddd;
+  if rising_edge(clk) then
+  
+	  if (reset = '1') then
+		 ppp := p;
+		 count := 0;
+		 ddd := "0";
+	  elsif (start = '0') then
+		 ppp := p;
+		 count := 0;
+		 ddd := "0";
+	  elsif (count = N) then
+		 ppp := ppp;
+		 ddd := "1";
+	  elsif (clk'event and clk = '1') then
+		 ddd := "0";
+		 if (todo = "01") then
+			ppp := ppp + a;
+		 elsif (todo = "10") then
+			ppp := ppp + s;
+		 elsif (todo = "00") then
+			ppp := ppp;
+		 elsif (todo = "11") then
+			ppp := ppp;
+		 end if;
+		 count := count + 1;
+		 ppp := shift_right(ppp,1);
+		 --ppp := ppp sra 1;
+	  end if;
+		
+		pp(2*N-1 downto 0) <= ppp(2*N downto 1);
+		dd <= ddd;
+		
+	end if;
    
 end process;
 

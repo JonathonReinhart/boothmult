@@ -72,7 +72,20 @@ architecture behavioral of booth_periph is
             );
     end component;
     
-    -- TODO: boothmult goes here
+
+	component boothmult is
+	 generic (
+		N : positive := 32
+	 );
+	 port    (
+		clk, reset      : in  std_logic;
+		multiplier      : in  std_logic_vector(N-1 downto 0);
+		multiplicand    : in  std_logic_vector(N-1 downto 0);
+		product         : out std_logic_vector((2*N)-1 downto 0);
+		start           : in  std_logic;
+		done            : out std_logic
+	 );
+	end component;
 
 
 -- Signals
@@ -114,7 +127,16 @@ begin
     mult_reset <= rst_cmd or sys_rst;   -- Reset the multiplier with a reset cmd or system reset
         
         
-    -- TODO: instantiate boothmult here        
+    mult: boothmult
+	 port map (
+		clk => clk,
+		reset => mult_reset,
+		multiplier => multiplier,
+		multiplicand => multiplicand,
+		product => product,
+		start => mult_start,
+		done => mult_done
+		);
         
 end behavioral;
 
