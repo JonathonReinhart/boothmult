@@ -104,7 +104,7 @@ architecture Behavioral of top_level_entity is
   		signal data_present    : std_logic;
 		signal write_to_uart   : std_logic;
 		signal write_to_leds   : std_logic;
-		signal buffer_full     : std_logic;
+		signal tx_buffer_full  : std_logic;
 
       COMPONENT my_dcm
 	   PORT
@@ -231,7 +231,7 @@ begin
       --  switch_in, port 00
       --  uart_data_rx, port 02
       --  data_present, port 04
-      --  buffer_full, port 05
+      --  tx_buffer_full, port 05
 
 	process (clk55MHz,rst_p)
 	begin  
@@ -248,7 +248,7 @@ begin
         			when X"04" =>
 							in_port <= "0000000" & data_present;
 					when X"05" =>
-							in_port <= "0000000" & buffer_full;
+							in_port <= "0000000" & tx_buffer_full;
         			when others =>
 						in_port <= "00000000";
       		end case;
@@ -266,7 +266,7 @@ begin
 		reset_buffer        => rst_p,
 		en_16_x_baud        => en_16_x_baud,
 		buffer_data_present => data_present,
-		buffer_full         => open,
+		buffer_full         => tx_buffer_full,
 		buffer_half_full    => open,
 		clk                 => clk55MHz
 	); 
