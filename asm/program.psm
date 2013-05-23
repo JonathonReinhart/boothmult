@@ -163,19 +163,35 @@ CONSTANT ascii_DEL        , 7F    ; ascii code
 cold_start:
     LOAD    s0, all_clear       ; zero out reg s0
 
-prompt_loop:    
-    CALL    print_multiplier
-    
-    CALL    read_hex_byte       ; reads a byte from UART into s0
-    LOAD    s4, s0
+prompt_loop:
 
+    ;; MULTIPLIER             sA (MSB), sB, sC, sD (LSB)
+    CALL    print_multiplier
+
+    ; Read it
+    CALL    read_hex_byte
+    LOAD    sA, s0
+    CALL    read_hex_byte
+    LOAD    sB, s0
+    CALL    read_hex_byte
+    LOAD    sC, s0
+    CALL    read_hex_byte
+    LOAD    sD, s0
     CALL    print_newline
-    LOAD    s0, s4
-    CALL    print_byte_hex      ; Print the value in s0
+    
+    ; Echo it back
+    LOAD    s0, sA
+    CALL    print_byte_hex
+    LOAD    s0, sB
+    CALL    print_byte_hex
+    LOAD    s0, sC
+    CALL    print_byte_hex
+    LOAD    s0, sD
+    CALL    print_byte_hex
     LOAD    s1, ascii_h         ; Print an 'h' suffix
     OUTPUT  s1, uart_data_tx
-    
     CALL    print_newline
+    
     JUMP    prompt_loop
     
     
