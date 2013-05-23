@@ -55,27 +55,27 @@ architecture behavioral of booth_io_if is
     constant DATA_PORT          : unsigned := x"A1";
 
     -- Register index constants
-    constant REG_MULTIPLICAND_0 : unsigned := x"00";  -- LSB
-    constant REG_MULTIPLICAND_1 : unsigned := x"01";
-    constant REG_MULTIPLICAND_2 : unsigned := x"02";
-    constant REG_MULTIPLICAND_3 : unsigned := x"03";  -- MSB
+    constant REG_MULTIPLICAND_0 : std_logic_vector(7 downto 0) := x"00";  -- LSB
+    constant REG_MULTIPLICAND_1 : std_logic_vector(7 downto 0) := x"01";
+    constant REG_MULTIPLICAND_2 : std_logic_vector(7 downto 0) := x"02";
+    constant REG_MULTIPLICAND_3 : std_logic_vector(7 downto 0) := x"03";  -- MSB
     
-    constant REG_MULTIPLIER_0   : unsigned := x"04";  -- LSB
-    constant REG_MULTIPLIER_1   : unsigned := x"05";
-    constant REG_MULTIPLIER_2   : unsigned := x"06";
-    constant REG_MULTIPLIER_3   : unsigned := x"07";  -- MSB
+    constant REG_MULTIPLIER_0   : std_logic_vector(7 downto 0) := x"04";  -- LSB
+    constant REG_MULTIPLIER_1   : std_logic_vector(7 downto 0) := x"05";
+    constant REG_MULTIPLIER_2   : std_logic_vector(7 downto 0) := x"06";
+    constant REG_MULTIPLIER_3   : std_logic_vector(7 downto 0) := x"07";  -- MSB
     
-    constant REG_PRODUCT_0      : unsigned := x"08";  -- LSB
-    constant REG_PRODUCT_1      : unsigned := x"09";
-    constant REG_PRODUCT_2      : unsigned := x"0A";
-    constant REG_PRODUCT_3      : unsigned := x"0B";
-    constant REG_PRODUCT_4      : unsigned := x"0C";
-    constant REG_PRODUCT_5      : unsigned := x"0D";
-    constant REG_PRODUCT_6      : unsigned := x"0E";
-    constant REG_PRODUCT_7      : unsigned := x"0F";  -- MSB
+    constant REG_PRODUCT_0      : std_logic_vector(7 downto 0) := x"08";  -- LSB
+    constant REG_PRODUCT_1      : std_logic_vector(7 downto 0) := x"09";
+    constant REG_PRODUCT_2      : std_logic_vector(7 downto 0) := x"0A";
+    constant REG_PRODUCT_3      : std_logic_vector(7 downto 0) := x"0B";
+    constant REG_PRODUCT_4      : std_logic_vector(7 downto 0) := x"0C";
+    constant REG_PRODUCT_5      : std_logic_vector(7 downto 0) := x"0D";
+    constant REG_PRODUCT_6      : std_logic_vector(7 downto 0) := x"0E";
+    constant REG_PRODUCT_7      : std_logic_vector(7 downto 0) := x"0F";  -- MSB
     
-    constant REG_STATUS         : unsigned := x"10";
-    constant REG_CTRL           : unsigned := x"11";
+    constant REG_STATUS         : std_logic_vector(7 downto 0) := x"10";
+    constant REG_CTRL           : std_logic_vector(7 downto 0) := x"11";
     
     constant CTRL_RESET_BIT     : integer := 0;
     constant CTRL_START_BIT     : integer := 1;
@@ -94,7 +94,8 @@ architecture behavioral of booth_io_if is
     
 begin
 
-    P1 : process (clk, sys_rst) is
+    --P1 : process (clk, sys_rst) is
+    P1 : process (clk) is
         
         variable reset_regs_to_defaults : boolean;
         variable reset_command_received : boolean;
@@ -103,155 +104,157 @@ begin
     
     begin
         -- Reset these temporaries every time the process is entered
-        reset_regs_to_defaults := false;
-        reset_command_received := false;
-        start_command_received := false;
+        if rising_edge(clk) then
+            reset_regs_to_defaults := false;
+            reset_command_received := false;
+            start_command_received := false;
+
         
-        if rising_edge(clk) and (sys_rst='1') then
-            reset_regs_to_defaults := true;
-            rst_cmd <= '0';     -- Special case, so he can be driven for one clock during reset command.
-        end if;
+            if sys_rst='1' then
+                reset_regs_to_defaults := true;
+                --rst_cmd <= '0';     -- Special case, so he can be driven for one clock during reset command.
+            
+            else    -- sys_rst='1'
         
-        
-        if rising_edge(clk) and (sys_rst='0') then
-        
-        --------------------------------------------------------------------------------------------
-        -- pBlaze I/O
-        
-            -- Read (INPUT) operation from pBlaze?
-            if (read_strobe='1') then
+            
+            --------------------------------------------------------------------------------------------
+            -- pBlaze I/O
+            
+                -- Read (INPUT) operation from pBlaze?
+                if (read_strobe='1') then
+                    
+                    -- What port is pBlaze reading from
+                    if (unsigned(port_id) = INDEX_PORT) then        -- Index port
+                        out_port <= curreg;
+                        
+                    elsif (unsigned(port_id) = DATA_PORT) then      -- Data port
+                        -- Reply with data, depending on current register index
+                        case curreg is
+                            when REG_MULTIPLICAND_0     =>  out_port <= MULTIPLICAND(7  downto 0 ); -- LSB
+                            when REG_MULTIPLICAND_1     =>  out_port <= MULTIPLICAND(15 downto 8 );
+                            when REG_MULTIPLICAND_2     =>  out_port <= MULTIPLICAND(23 downto 16);
+                            when REG_MULTIPLICAND_3     =>  out_port <= MULTIPLICAND(31 downto 24); -- MSB
+                            
+                            when REG_MULTIPLIER_0       =>  out_port <= MULTIPLIER(7  downto 0 );   -- LSB
+                            when REG_MULTIPLIER_1       =>  out_port <= MULTIPLIER(15 downto 8 );
+                            when REG_MULTIPLIER_2       =>  out_port <= MULTIPLIER(23 downto 16);
+                            when REG_MULTIPLIER_3       =>  out_port <= MULTIPLIER(31 downto 24);   -- MSB
+                            
+                            when REG_PRODUCT_0          =>  out_port <= PRODUCT(7  downto 0 );      -- LSB
+                            when REG_PRODUCT_1          =>  out_port <= PRODUCT(15 downto 8 );
+                            when REG_PRODUCT_2          =>  out_port <= PRODUCT(23 downto 16);
+                            when REG_PRODUCT_3          =>  out_port <= PRODUCT(31 downto 24);
+                            when REG_PRODUCT_4          =>  out_port <= PRODUCT(39 downto 32);
+                            when REG_PRODUCT_5          =>  out_port <= PRODUCT(47 downto 40);
+                            when REG_PRODUCT_6          =>  out_port <= PRODUCT(55 downto 48);
+                            when REG_PRODUCT_7          =>  out_port <= PRODUCT(63 downto 56);      -- MSB
+                            
+                            when REG_STATUS             =>  out_port <= STATUS;                        
+                            when others                 =>  out_port <= (others => '1');            -- Invalid
+                        end case;
+                        
+                    else    -- Port not for us!
+                        out_port <= (others => 'Z');
+                    end if;
+                    
+                -- Write (OUTPUT) operation from pBlaze?
+                elsif (write_strobe='1') then
                 
-                -- What port is pBlaze reading from
-                if (unsigned(port_id) = INDEX_PORT) then        -- Index port
-                    out_port <= curreg;
+                    -- What port is pBlaze writing to
+                    if (unsigned(port_id) = INDEX_PORT) then        -- Index port
+                        curreg <= in_port;
+                        
+                    elsif (unsigned(port_id) = DATA_PORT) then      -- Data port
+                        -- Store incoming data to register, depending on currently selected reg number.
+                        -- TODO: Forbid writes to everything but RESET if STATUS0_BUSY
+                        case curreg is
+                            when REG_MULTIPLICAND_0     =>  MULTIPLICAND(7  downto 0 ) <= in_port;  -- LSB
+                            when REG_MULTIPLICAND_1     =>  MULTIPLICAND(15 downto 8 ) <= in_port;
+                            when REG_MULTIPLICAND_2     =>  MULTIPLICAND(23 downto 16) <= in_port;
+                            when REG_MULTIPLICAND_3     =>  MULTIPLICAND(31 downto 24) <= in_port;  -- MSB
+                            
+                            when REG_MULTIPLIER_0       =>  MULTIPLIER(7  downto 0 ) <= in_port;    -- LSB
+                            when REG_MULTIPLIER_1       =>  MULTIPLIER(15 downto 8 ) <= in_port;
+                            when REG_MULTIPLIER_2       =>  MULTIPLIER(23 downto 16) <= in_port;
+                            when REG_MULTIPLIER_3       =>  MULTIPLIER(31 downto 24) <= in_port;    -- MSB
+                            
+                            when REG_PRODUCT_0          =>  PRODUCT(7  downto 0 ) <= in_port;       -- LSB
+                            when REG_PRODUCT_1          =>  PRODUCT(15 downto 8 ) <= in_port;
+                            when REG_PRODUCT_2          =>  PRODUCT(23 downto 16) <= in_port;
+                            when REG_PRODUCT_3          =>  PRODUCT(31 downto 24) <= in_port;
+                            when REG_PRODUCT_4          =>  PRODUCT(39 downto 32) <= in_port;
+                            when REG_PRODUCT_5          =>  PRODUCT(47 downto 40) <= in_port;
+                            when REG_PRODUCT_6          =>  PRODUCT(55 downto 48) <= in_port;
+                            when REG_PRODUCT_7          =>  PRODUCT(63 downto 56) <= in_port;       -- MSB
+                            
+                            when REG_CTRL               => 
+                                -- Check which bits are being written to.
+                                if (in_port(CTRL_RESET_BIT) = '1') then
+                                    reset_command_received := true;
+                                    reset_regs_to_defaults := true;
+                                    
+                                elsif (in_port(CTRL_START_BIT) = '1') then
+                                    start_command_received := true;
+                                    
+                                end if;
+                                
+                            when others                 =>  null;            -- Invalid reg, do nothing
+                        end case;
+                        
+                        -- Also, any time pBlaze writes to a register, we clear the PROD_VALID flag.
+                        STATUS1_PROD_VALID <= '0';
+                        
+                    else    -- Port not for us!
                     
-                elsif (unsigned(port_id) = DATA_PORT) then      -- Data port
-                    -- Reply with data, depending on current register index
-                    case unsigned(curreg) is
-                        when REG_MULTIPLICAND_0     =>  out_port <= MULTIPLICAND(7  downto 0 ); -- LSB
-                        when REG_MULTIPLICAND_1     =>  out_port <= MULTIPLICAND(15 downto 8 );
-                        when REG_MULTIPLICAND_2     =>  out_port <= MULTIPLICAND(23 downto 16);
-                        when REG_MULTIPLICAND_3     =>  out_port <= MULTIPLICAND(31 downto 24); -- MSB
-                        
-                        when REG_MULTIPLIER_0       =>  out_port <= MULTIPLIER(7  downto 0 );   -- LSB
-                        when REG_MULTIPLIER_1       =>  out_port <= MULTIPLIER(15 downto 8 );
-                        when REG_MULTIPLIER_2       =>  out_port <= MULTIPLIER(23 downto 16);
-                        when REG_MULTIPLIER_3       =>  out_port <= MULTIPLIER(31 downto 24);   -- MSB
-                        
-                        when REG_PRODUCT_0          =>  out_port <= PRODUCT(7  downto 0 );      -- LSB
-                        when REG_PRODUCT_1          =>  out_port <= PRODUCT(15 downto 8 );
-                        when REG_PRODUCT_2          =>  out_port <= PRODUCT(23 downto 16);
-                        when REG_PRODUCT_3          =>  out_port <= PRODUCT(31 downto 24);
-                        when REG_PRODUCT_4          =>  out_port <= PRODUCT(39 downto 32);
-                        when REG_PRODUCT_5          =>  out_port <= PRODUCT(47 downto 40);
-                        when REG_PRODUCT_6          =>  out_port <= PRODUCT(55 downto 48);
-                        when REG_PRODUCT_7          =>  out_port <= PRODUCT(63 downto 56);      -- MSB
-                        
-                        when REG_STATUS             =>  out_port <= STATUS;                        
-                        when others                 =>  out_port <= (others => '1');            -- Invalid
-                    end case;
-                    
-                else    -- Port not for us!
-                    out_port <= (others => 'Z');
+                    end if; -- port_id
+                
+                end if; -- read_strobe or write_strobe
+            
+                
+            --------------------------------------------------------------------------------------------
+            -- Multiplier I/O
+                
+                -- Finished?
+                if (done_in='1') then
+                    -- When the multiplier indicates it is finished, save the result to the register,
+                    -- and update the status bits.
+                    PRODUCT <= product_in;
+                    STATUS0_BUSY <= '0';
+                    STATUS1_PROD_VALID <= '1';
                 end if;
                 
-            -- Write (OUTPUT) operation from pBlaze?
-            elsif (write_strobe='1') then
-            
-                -- What port is pBlaze writing to
-                if (unsigned(port_id) = INDEX_PORT) then        -- Index port
-                    curreg <= in_port;
-                    
-                elsif (unsigned(port_id) = DATA_PORT) then      -- Data port
-                    -- Store incoming data to register, depending on currently selected reg number.
-                    -- TODO: Forbid writes to everything but RESET if STATUS0_BUSY
-                    case unsigned(curreg) is
-                        when REG_MULTIPLICAND_0     =>  MULTIPLICAND(7  downto 0 ) <= in_port;  -- LSB
-                        when REG_MULTIPLICAND_1     =>  MULTIPLICAND(15 downto 8 ) <= in_port;
-                        when REG_MULTIPLICAND_2     =>  MULTIPLICAND(23 downto 16) <= in_port;
-                        when REG_MULTIPLICAND_3     =>  MULTIPLICAND(31 downto 24) <= in_port;  -- MSB
-                        
-                        when REG_MULTIPLIER_0       =>  MULTIPLIER(7  downto 0 ) <= in_port;    -- LSB
-                        when REG_MULTIPLIER_1       =>  MULTIPLIER(15 downto 8 ) <= in_port;
-                        when REG_MULTIPLIER_2       =>  MULTIPLIER(23 downto 16) <= in_port;
-                        when REG_MULTIPLIER_3       =>  MULTIPLIER(31 downto 24) <= in_port;    -- MSB
-                        
-                        when REG_PRODUCT_0          =>  PRODUCT(7  downto 0 ) <= in_port;       -- LSB
-                        when REG_PRODUCT_1          =>  PRODUCT(15 downto 8 ) <= in_port;
-                        when REG_PRODUCT_2          =>  PRODUCT(23 downto 16) <= in_port;
-                        when REG_PRODUCT_3          =>  PRODUCT(31 downto 24) <= in_port;
-                        when REG_PRODUCT_4          =>  PRODUCT(39 downto 32) <= in_port;
-                        when REG_PRODUCT_5          =>  PRODUCT(47 downto 40) <= in_port;
-                        when REG_PRODUCT_6          =>  PRODUCT(55 downto 48) <= in_port;
-                        when REG_PRODUCT_7          =>  PRODUCT(63 downto 56) <= in_port;       -- MSB
-                        
-                        when REG_CTRL               => 
-                            -- Check which bits are being written to.
-                            if (in_port(CTRL_RESET_BIT) = '1') then
-                                reset_command_received := true;
-                                reset_regs_to_defaults := true;
-                                
-                            elsif (in_port(CTRL_START_BIT) = '1') then
-                                start_command_received := true;
-                                
-                            end if;
-                            
-                        
-                        when others                 =>  out_port <= (others => '1');            -- Invalid
-                    end case;
-                    
-                    -- Also, any time pBlaze writes to a register, we clear the PROD_VALID flag.
-                    STATUS1_PROD_VALID <= '0';
-                    
-                else    -- Port not for us!
+            ------------------------------
+            -- Update outputs
+                -- Handle different commands
+                if start_command_received then
+                    start_cmd <= '1';       -- Pulse high for one clock
+                    STATUS0_BUSY <= '1';
+                else
+                    start_cmd <= '0';
+                end if;
                 
-                end if; -- port_id
-            
-            end if; -- read_strobe or write_strobe
+                if reset_command_received then
+                    rst_cmd <= '1';
+                else
+                    rst_cmd <= '0';
+                end if;
+                
+
+            end if;     -- if sys_rst='1'
         
-            
-        --------------------------------------------------------------------------------------------
-        -- Multiplier I/O
-            
-            -- Finished?
-            if (done_in='1') then
-                -- When the multiplier indicates it is finished, save the result to the register,
-                -- and update the status bits.
-                PRODUCT <= product_in;
-                STATUS0_BUSY <= '0';
-                STATUS1_PROD_VALID <= '1';
-            end if;
-            
-        ------------------------------
-        -- Update outputs
-            -- Handle different commands
-            if start_command_received then
-                start_cmd <= '1';       -- Pulse high for one clock
-                STATUS0_BUSY <= '1';
-            else
+        
+            if (reset_regs_to_defaults) then
+                -- Reset all of our registers to their defaults
+                curreg              <= (others => '0');
+                MULTIPLICAND        <= (others => '0');
+                MULTIPLIER          <= (others => '0');
+                PRODUCT             <= (others => '1');
+                STATUS              <= (others => '0');
                 start_cmd <= '0';
+                out_port <= (others => 'Z');
             end if;
-            
-            if reset_command_received then
-                rst_cmd <= '1';
-            else
-                rst_cmd <= '0';
-            end if;
-            
-
-        end if;     -- rising_edge(clk) and (sys_rst='0')
         
-        
-        if (reset_regs_to_defaults) then
-            -- Reset all of our registers to their defaults
-            curreg              <= (others => '0');
-            MULTIPLICAND        <= (others => '0');
-            MULTIPLIER          <= (others => '0');
-            PRODUCT             <= (others => '1');
-            STATUS              <= (others => '0');
-            start_cmd <= '0';
         end if;
-
 
     end process P1;
     
