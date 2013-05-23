@@ -1,38 +1,4 @@
 --
--- KCPSM3 reference design - Real Time Clock with UART communications
---
--- Ken Chapman - Xilinx Ltd - October 2003
---
--- The design demonstrates the following:-
---           Connection of KCPSM3 to Program ROM
---           Connection of UART macros supplied with PicoBlaze with
---                Baud rate generation
---           Definition of input and output ports with 
---                Minimum decoding
---                Pipelining where appropriate
---           Interrupt circuit with
---                Simple fixed period timer
---                Automatic clearing using interrupt acknowledge from KCPSM3
---
--- The design is set up for a 55MHz system clock and UART communications rate of 38400 baud.
--- Please read design documentation to modify to your own requirements.
---
-------------------------------------------------------------------------------------
---
--- NOTICE:
---
--- Copyright Xilinx, Inc. 2003.   This code may be contain portions patented by other 
--- third parties.  By providing this core as one possible implementation of a standard,
--- Xilinx is making no representation that the provided implementation of this standard 
--- is free from any claims of infringement by any third party.  Xilinx expressly 
--- disclaims any warranty with respect to the adequacy of the implementation, including 
--- but not limited to any warranty or representation that the implementation is free 
--- from claims of any third party.  Furthermore, Xilinx is providing this core as a 
--- courtesy to you and suggests that you contact all third parties to obtain the 
--- necessary rights to use this implementation.
---
-------------------------------------------------------------------------------------
---
 -- Library declarations
 --
 -- Standard IEEE libraries
@@ -46,11 +12,9 @@ use IEEE.STD_LOGIC_UNSIGNED.ALL;
 --
 --
 entity top_level_entity is
-    Port (    tx : out std_logic;
-              rx : in std_logic;
-           alarm : out std_logic;
-             clk : in std_logic;
-				lock : out std_logic);
+    Port (   clk : in std_logic;
+              tx : out std_logic;
+              rx : in std_logic );
     end top_level_entity;
 --
 ------------------------------------------------------------------------------------
@@ -141,11 +105,6 @@ signal interrupt_ack   : std_logic;
 --
 signal uart_status_port : std_logic_vector(7 downto 0);
 --
--- Signals to form an timer generating an interrupt every microsecond
---
-signal timer_count   : integer range 0 to 63 :=0;
-signal timer_pulse   : std_logic;
---
 -- Signals for UART connections
 --
 signal          baud_count : integer range 0 to 127 :=0;
@@ -197,43 +156,12 @@ begin
 		CLKFX_OUT => clk55MHz,
 		CLKIN_IBUFG_OUT => open,
 		CLK0_OUT => open,
-		LOCKED_OUT => lock
+		LOCKED_OUT => open
 	);
 
-  --
-  ----------------------------------------------------------------------------------------------------------------------------------
-  -- Interrupt 
-  ----------------------------------------------------------------------------------------------------------------------------------
-  --
-  --
-  -- Interrupt is a generated once every 55 clock cycles to provide a 1us reference. 
-  -- Interrupt is automatically cleared by interrupt acknowledgment from KCPSM3.
-  --
-
-  Timer: process(clk55MHz)
-  begin
-
-    if clk55MHz'event and clk55MHz='1' then
-      
-      if timer_count=54 then
-         timer_count <= 0;
-         timer_pulse <= '1';
-       else
-         timer_count <= timer_count + 1;
-         timer_pulse <= '0';
-      end if;
-
-      if interrupt_ack = '1' then
-         interrupt <= '0';
-       elsif timer_pulse = '1' then 
-         interrupt <= '1';
-        else
-         interrupt <= interrupt;
-      end if;
-     
-    end if;
     
-  end process Timer;
+  -- Interrupt unused
+  interrupt <= '0';
 
 
   --
@@ -285,8 +213,6 @@ begin
   -- KCPSM3 output ports 
   ----------------------------------------------------------------------------------------------------------------------------------
   --
-
-  -- adding the output registers to the clock processor
    
   output_ports: process(clk55MHz)
   begin
@@ -294,11 +220,7 @@ begin
     if clk55MHz'event and clk55MHz='1' then
       if write_strobe='1' then
 
-        -- Alarm register at address 00 hex with data bit0 providing control
 
-        if port_id(0)='0' then
-          alarm <= out_port(0);
-        end if;
 
       end if;
 

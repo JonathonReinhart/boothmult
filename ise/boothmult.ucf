@@ -1,9 +1,7 @@
 
 # PlanAhead Generated physical constraints 
 
-NET "alarm" LOC = L18;
 NET "clk" LOC = AH15;
-NET "lock" LOC = H18;
 NET "rx" LOC = AG15;
 NET "tx" LOC = AG20;
 
@@ -12,6 +10,4 @@ NET "tx" LOC = AG20;
 NET "clk" IOSTANDARD = LVCMOS33;
 NET "rx" IOSTANDARD = LVCMOS33;
 NET "tx" IOSTANDARD = LVCMOS33;
-NET "alarm" DRIVE = 2;
-NET "lock" DRIVE = 2;
 NET "tx" DRIVE = 8;
