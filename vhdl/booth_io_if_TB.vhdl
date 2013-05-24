@@ -271,7 +271,7 @@ begin
         end loop;
         
     -- Simulate completion.
-        product <= x"CAFEBABEB00B1EE5";
+        product <= x"CAFEBABEC001D00D";
         done_in <= '1';
         wait for 2*CLK_PER;
     
@@ -383,7 +383,7 @@ begin
         product_read(63 downto 56) <= port_data_from_if;
         wait for CLK_PER;
         
-        assert product_read = x"CAFEBABEB00B1EE5" report "product_read not CAFEBABEB00B1EE5" severity error;
+        assert product_read = x"CAFEBABEC001D00D" report "product_read not CAFEBABEC001D00D" severity error;
         
         
         
