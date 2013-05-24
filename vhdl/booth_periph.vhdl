@@ -127,16 +127,16 @@ begin
     mult_reset <= rst_cmd or sys_rst;   -- Reset the multiplier with a reset cmd or system reset
         
         
-    --mult: boothmult
-	 --port map (
-		--clk => clk,
-		--reset => mult_reset,
-		--multiplier => multiplier,
-		--multiplicand => multiplicand,
-		--product => product,
-		--start => mult_start,
-		--done => mult_done
-		--);
+    mult: boothmult
+	 port map (
+		clk => clk,
+		reset => mult_reset,
+		multiplier => multiplier,
+		multiplicand => multiplicand,
+		product => product,
+		start => mult_start,
+		done => mult_done
+		);
         
 end behavioral;
 
