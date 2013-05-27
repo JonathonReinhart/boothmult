@@ -588,80 +588,7 @@ send_Done:
     CALL send_to_UART
     RETURN
                         
-;
-;
-;Convert time to ASCII string in scratch pad memory.
-;
-;The time to converted must be stored in 3 scratch pad memory locations as
-;defined below. A register named 'store_pointer' must provide the address of
-;first location.
-;
-;        Address                Data
-;
-;     store_pointer      ----> hours
-;     store_pointer + 1  ----> minutes
-;     store_pointer + 1  ----> seconds
-;
-;The resulting ASCII string will be stored in scratch pad memory starting at
-;a location specified by a constant named 'string_start'. The string will
-;take the format hh:mm:ss and end with a carriage return.
-;
-;Registers used s0, s1, s2 and 'store_pointer'.
-;
-time_to_ASCII: 
-    LOAD s2, string_start                    ;location for string
-    FETCH s0, (store_pointer)                ;read hours value
-    CALL decimal_to_ASCII                    ;convert to ASCII
-    STORE s1, (s2)                           ;write hours to string
-    ADD s2, 01
-    STORE s0, (s2)
-    ADD s2, 01
-    LOAD s0, character_colon                 ;write ':' to string
-    STORE s0, (s2)
-    ADD s2, 01
-    ADD store_pointer, 01                    ;move to minutes
-    FETCH s0, (store_pointer)                ;read minutes value
-    CALL decimal_to_ASCII                    ;convert to ASCII
-    STORE s1, (s2)                           ;write minutes to string
-    ADD s2, 01
-    STORE s0, (s2)
-    ADD s2, 01
-    LOAD s0, character_colon                 ;write ':' to string
-    STORE s0, (s2)
-    ADD s2, 01
-    ADD store_pointer, 01                    ;move to seconds
-    FETCH s0, (store_pointer)                ;read seconds value
-    CALL decimal_to_ASCII                    ;convert to ASCII
-    STORE s1, (s2)                           ;write seconds to string
-    ADD s2, 01
-    STORE s0, (s2)
-    ADD s2, 01
-    LOAD s0, character_CR                    ;finish string with carriage return
-    STORE s0, (s2)
-    RETURN
-    
-;
-;Convert value provided in register s0 into ASCII characters
-;
-;The value provided must in the range 0 to 99 and will be converted into
-;two ASCII characters.
-;     The number of 'tens' will be representd by an ASCII character returned in register s1.
-;     The number of 'units' will be representd by an ASCII character returned in register s0.
-;
-;The ASCII representations of '0' to '9' are 30 to 39 hexadecimal which is simply 30 hex added to
-;the actual decimal value.
-;
-;Registers used s0 and s1.
-;
-decimal_to_ASCII: 
-    LOAD s1, 30                              ;load 'tens' counter with ASCII for '0'
-test_for_ten: 
-    ADD s1, 01                               ;increment 'tens' value
-    SUB s0, 0A                               ;try to subtract 10 from the supplied value
-    JUMP NC, test_for_ten                    ;repeat if subtraction was possible without underflow.
-    SUB s1, 01                               ;'tens' value one less ten due to underflow
-    ADD s0, 3A                               ;restore units value (the remainder) and convert to ASCII
-    RETURN
+
     
 ;
 ;
@@ -684,7 +611,7 @@ upper_case:
 
                         
 hex1char_to_byte: 
-    CALL upper_case
+    CALL fetch_char_from_memory
     COMPARE s0, character_0
     RETURN C                                ; reject < '0' - CARRY set
     COMPARE s0, character_colon             ; '9'+1
@@ -705,7 +632,6 @@ bad_AF:
     RETURN 
 
 hex2char_to_byte: 
-    CALL fetch_char_from_memory
     CALL hex1char_to_byte
     RETURN C
     LOAD s2, s0
@@ -713,7 +639,6 @@ hex2char_to_byte:
     SL0 s2
     SL0 s2
     SL0 s2
-    CALL fetch_char_from_memory
     CALL hex1char_to_byte
     RETURN C
     OR s2, s0
