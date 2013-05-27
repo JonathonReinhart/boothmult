@@ -15,6 +15,9 @@ CONSTANT UART_status_port,  00          ; UART status input
 
 CONSTANT UART_data_port,    01          ; UART Rx data (input) & Tx data (output)
 
+CONSTANT BOOTH_INDEX_PORT,  A0          ; Booth Multiplier peripheral - Index port
+CONSTANT BOOTH_DATA_PORT,   A1          ;   - Data port
+
 
 ;Special Register usage
 NAMEREG sF, UART_data                   ; used to pass data to and from the UART
@@ -643,8 +646,79 @@ hex2char_to_byte:
     RETURN C
     OR s2, s0
     RETURN
-                        
 
+;------------------------------
+; Booth multiplier 
+
+CONSTANT REG_MULTIPLICAND0,     00  ; LSB
+CONSTANT REG_MULTIPLICAND1,     01
+CONSTANT REG_MULTIPLICAND2,     02
+CONSTANT REG_MULTIPLICAND3,     03  ; MSB
+
+CONSTANT REG_MULTIPLIER0,       04  ; LSB
+CONSTANT REG_MULTIPLIER1,       05
+CONSTANT REG_MULTIPLIER2,       06
+CONSTANT REG_MULTIPLIER3,       07  ; MSB
+
+CONSTANT REG_PRODUCT0,          08  ; LSB
+CONSTANT REG_PRODUCT1,          09
+CONSTANT REG_PRODUCT2,          0A
+CONSTANT REG_PRODUCT3,          0B
+CONSTANT REG_PRODUCT4,          0C
+CONSTANT REG_PRODUCT5,          0D
+CONSTANT REG_PRODUCT6,          0E
+CONSTANT REG_PRODUCT7,          0F
+
+CONSTANT REG_CTRL,              10
+CONSTANT    CTRL_RESET,         01  ; Bit 0 = RESET
+CONSTANT 	CTRL_START,         02  ; Bit 1 = START
+
+CONSTANT REG_STATUS,            11
+CONSTANT    STATUS_BUSY,        01  ; Bit 0 = BUSY
+CONSTANT    STATUS_PROD_VALID,  02  ; Bit 1 = PROD_VALID
+
+
+; Reads a register in the booth multiplier
+; Parameters:
+;   s0 - Register index to read
+; Return value:
+;   s0 - Read register value
+booth_read_reg:
+    OUTPUT  s0, BOOTH_INDEX_PORT
+    INPUT   s0, BOOTH_DATA_PORT
+    RETURN
+    
+; Writes a register in the booth multiplier
+; Parameters:
+;   s0 - Register index to write
+;   s1 - Register value to write
+booth_write_reg:
+    OUTPUT  s0, BOOTH_INDEX_PORT
+    OUTPUT  s1, BOOTH_DATA_PORT
+    RETURN
+    
+; Resets the booth multiplier
+booth_reset:
+    LOAD    s0, REG_CTRL
+    LOAD    s1, CTRL_RESET
+    JUMP    booth_write_reg     ; Tail-call
+    
+; Starts a multiplication operation in the booth multiplier
+booth_start:
+    LOAD    s0, REG_CTRL
+    LOAD    s1, CTRL_START
+    JUMP    booth_write_reg     ; Tail-call
+    
+; Waits for an on-going multiplication to finish     
+booth_wait:
+    ; Set register = REG_STATUS
+    LOAD    s0, REG_STATUS
+    OUTPUT  s0, BOOTH_INDEX_PORT
+booth_wait__loop:
+    INPUT   s0, BOOTH_DATA_PORT
+    TEST    s0, STATUS_BUSY
+    JUMP NZ, booth_wait__loop
+    RETURN
                         
 ;---------------------------------------------------------------------------------------------------
 ; ASCII table
