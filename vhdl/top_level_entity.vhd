@@ -247,13 +247,6 @@ begin
 		else
 			read_from_uart <= '0';
 		end if;
-		
-		if write_strobe='1' and (port_id = UART_DATA_PORT) then
-			write_to_uart <= '1';
-		else
-			write_to_uart <= '0';
-		end if;
-		
 
     end if;
 
@@ -318,6 +311,8 @@ begin
       end if;
     end if;
   end process baud_timer;
+
+  write_to_uart  <= '1' when (write_strobe='1' and port_id = UART_DATA_PORT) else '0';
 
   ----------------------------------------------------------------------------------------------------------------------------------
   
