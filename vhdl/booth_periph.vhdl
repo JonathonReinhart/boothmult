@@ -14,7 +14,6 @@ entity booth_periph is
         port_id     : in std_logic_vector (7 downto 0);     -- Port ID, asserted by pBlaze
         
         -- I/O Data from BM module to pBlaze
-        -- TODO: Will out_port connect to MUX or be Hi-Z and connect directly to pBlaze?
         out_port    : out std_logic_vector (7 downto 0);    -- 8-bit data out to pBlaze
         read_strobe : in std_logic;                         -- strobed when pBlaze is reading from us
         
@@ -41,7 +40,6 @@ architecture behavioral of booth_periph is
             port_id     : in std_logic_vector (7 downto 0);     -- Port ID, asserted by pBlaze
             
             -- I/O Data from BM module to pBlaze
-            -- TODO: Will out_port connect to MUX or be Hi-Z and connect directly to pBlaze?
             out_port    : out std_logic_vector (7 downto 0);    -- 8-bit data out to pBlaze
             read_strobe : in std_logic;                         -- strobed when pBlaze is reading from us
             
