@@ -97,16 +97,19 @@ begin
     P1 : process (clk) is
         
         variable reset_regs_to_defaults : boolean;
-        variable reset_command_received : boolean;
-        variable start_command_received : boolean;
+        
+		  variable start_cmd_active : boolean := false;
+		  variable reset_cmd_active : boolean := false;
+		  
+		  variable cmd_clk_count : integer := 0;
     
     
     begin
         -- Reset these temporaries every time the process is entered
         if rising_edge(clk) then
             reset_regs_to_defaults := false;
-            reset_command_received := false;
-            start_command_received := false;
+            --reset_command_received := false;
+            --start_cmd_active := false;
 
         
             if sys_rst='1' then
@@ -187,11 +190,14 @@ begin
                             when REG_CTRL               => 
                                 -- Check which bits are being written to.
                                 if (in_port(CTRL_RESET_BIT) = '1') then
-                                    reset_command_received := true;
+                                    reset_cmd_active := true;
+												cmd_clk_count := 3;
                                     reset_regs_to_defaults := true;
                                     
                                 elsif (in_port(CTRL_START_BIT) = '1') then
-                                    start_command_received := true;
+                                    start_cmd_active := true;
+												cmd_clk_count := 3;
+                                    STATUS0_BUSY <= '1';
                                     
                                 end if;
                                 
@@ -222,22 +228,21 @@ begin
                 
             ------------------------------
             -- Update outputs
-                -- Handle different commands
-                if start_command_received then
-                    start_cmd <= '1';       -- Pulse high for one clock
-                    STATUS0_BUSY <= '1';
-                else
-                    start_cmd <= '0';
-                end if;
-                
-                if reset_command_received then
-                    rst_cmd <= '1';
-                else
-                    rst_cmd <= '0';
-                end if;
-                
+					 
+					 if cmd_clk_count > 0 then
+					     cmd_clk_count := cmd_clk_count - 1;
+				    else
+					     start_cmd_active := false;
+						  reset_cmd_active := false;
+				    end if;
+					 
+					 
+					 if start_cmd_active then start_cmd <= '1'; else start_cmd <= '0'; end if;
+					 if reset_cmd_active then rst_cmd <= '1'; else rst_cmd <= '0'; end if;
+					 
 
-            end if;     -- if sys_rst='1'
+
+            end if;     -- else sys_rst='1'
         
         
             if (reset_regs_to_defaults) then
@@ -249,11 +254,18 @@ begin
                 STATUS              <= (others => '0');
                 start_cmd <= '0';
                 out_port <= (others => 'Z');
+		
+					 start_cmd_active := false;
+					 --cmd_clk_count := 0;				-- These cannot be reset, because they're driving the reset signal
+					 --reset_cmd_active := false;
             end if;
         
-        end if;
+        end if;  -- rising_edge(clk)
 
+	 
     end process P1;
+	 
+
     
     
     multiplicand_out    <= MULTIPLICAND;
