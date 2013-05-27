@@ -1,34 +1,22 @@
---
--- Library declarations
---
--- Standard IEEE libraries
---
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
---use IEEE.STD_LOGIC_ARITH.ALL;
-use IEEE.STD_LOGIC_UNSIGNED.ALL;
---
-------------------------------------------------------------------------------------
---
---
+
+
 entity top_level_entity is
-    Port (   clk : in std_logic;
+    port (   clk : in std_logic;
               tx : out std_logic;
               rx : in std_logic );
-    end top_level_entity;
---
-------------------------------------------------------------------------------------
---
--- Start of test architecture
---
+end top_level_entity;
+
+
 architecture Behavioral of top_level_entity is
---
+
 ------------------------------------------------------------------------------------
---
--- declaration of KCPSM3
---
+-- Components
+
+  -- PicoBlaze microprocessor core
   component kcpsm3 
-    Port (      address : out std_logic_vector(9 downto 0);
+    port (      address : out std_logic_vector(9 downto 0);
             instruction : in std_logic_vector(17 downto 0);
                 port_id : out std_logic_vector(7 downto 0);
            write_strobe : out std_logic;
@@ -40,17 +28,15 @@ architecture Behavioral of top_level_entity is
                   reset : in std_logic;
                     clk : in std_logic);
     end component;
---
--- declaration of program ROM
---
+
+  -- PicoBlaze Program ROM
   component program
-    Port (      address : in std_logic_vector(9 downto 0);
+    port (      address : in std_logic_vector(9 downto 0);
             instruction : out std_logic_vector(17 downto 0);
                     clk : in std_logic);
     end component;
---
--- declaration of UART transmitter with integral 16 byte FIFO buffer
---
+
+  -- UART transmitter with integral 16 byte FIFO buffer
   component uart_tx
     Port (            data_in : in std_logic_vector(7 downto 0);
                  write_buffer : in std_logic;
@@ -61,9 +47,8 @@ architecture Behavioral of top_level_entity is
              buffer_half_full : out std_logic;
                           clk : in std_logic);
     end component;
---
--- declaration of UART Receiver with integral 16 byte FIFO buffer
---
+
+  -- UART Receiver with integral 16 byte FIFO buffer
   component uart_rx
     Port (            serial_in : in std_logic;
                        data_out : out std_logic_vector(7 downto 0);
@@ -75,18 +60,19 @@ architecture Behavioral of top_level_entity is
                buffer_half_full : out std_logic;
                             clk : in std_logic);
   end component;
---
--- Insert DCM component declaration here
-	COMPONENT my_dcm
-	PORT(
+
+  -- Digital Clock Manager
+  COMPONENT my_dcm
+    PORT(
 		CLKIN_IN : IN std_logic;          
 		CLKFX_OUT : OUT std_logic;
 		CLKIN_IBUFG_OUT : OUT std_logic;
 		CLK0_OUT : OUT std_logic;
 		LOCKED_OUT : OUT std_logic
 		);
-	END COMPONENT;
+  END COMPONENT;
 	
+	-- Booth multiplier peripheral
 	component booth_periph is
     generic (
         N : positive := 32                                  -- Factor bit width
@@ -109,9 +95,9 @@ architecture Behavioral of top_level_entity is
 	
 	
 	
-	
-
 ------------------------------------------------------------------------------------
+-- Signals	
+
 signal sys_rst : std_logic;	-- TODO: Add an input pin
 
 --
@@ -150,26 +136,31 @@ signal clk55MHz : std_logic;
   
 signal data_from_booth : std_logic_vector (7 downto 0);
 
+
+------------------------------------------------------------------------------------
+-- Constants	
+
 -- Port IDs
 constant UART_STATUS_PORT	: std_logic_vector(7 downto 0) := x"00";
 constant UART_DATA_PORT 	: std_logic_vector(7 downto 0) := x"01";		-- Rx and Tx
 constant BOOTH_INDEX_PORT 	: std_logic_vector(7 downto 0) := x"A0";
 constant BOOTH_DATA_PORT 	: std_logic_vector(7 downto 0) := x"A1";
 
-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
---
--- Start of circuit description
---
+
+
+
+------------------------------------------------------------------------------------
+-- Start circuit description	
 begin
 
-  sys_rst <= '0';
+  sys_rst <= '0';		-- TODO: Add an input pin
+
 
   --
   ----------------------------------------------------------------------------------------------------------------------------------
   -- KCPSM3 and the program memory 
   ----------------------------------------------------------------------------------------------------------------------------------
   --
-
   processor: kcpsm3
     port map(      address => address,
                instruction => instruction,
@@ -188,7 +179,11 @@ begin
                instruction => instruction,
                        clk => clk55MHz);
 
-  -- Insert DCM component instantiation here
+  interrupt <= '0';	-- Interrupt unused
+
+
+
+  -- Digital Clock Manager instantiation
   	Inst_my_dcm: my_dcm PORT MAP(
 		CLKIN_IN => clk,
 		CLKFX_OUT => clk55MHz,
@@ -196,10 +191,6 @@ begin
 		CLK0_OUT => open,
 		LOCKED_OUT => open
 	);
-
-    
-  -- Interrupt unused
-  interrupt <= '0';
 
 
   --
@@ -237,11 +228,10 @@ begin
 
       end case;
 
+
       -- Form read strobe for UART receiver FIFO buffer.
       -- The fact that the read strobe will occur after the actual data is read by 
       -- the KCPSM3 is acceptable because it is really means 'I have read you'!
-
-		
 		if read_strobe='1' and (port_id = UART_DATA_PORT) then
 			read_from_uart <= '1';
 		else
@@ -251,13 +241,6 @@ begin
     end if;
 
   end process input_ports;
-
-
-  --
-  ----------------------------------------------------------------------------------------------------------------------------------
-  -- KCPSM3 output ports 
-  ----------------------------------------------------------------------------------------------------------------------------------
-  --
 
 
 
@@ -312,9 +295,11 @@ begin
     end if;
   end process baud_timer;
 
+  -- Combinatorial logic controlling write strobe for UART
   write_to_uart  <= '1' when (write_strobe='1' and port_id = UART_DATA_PORT) else '0';
 
   ----------------------------------------------------------------------------------------------------------------------------------
+  -- Booth Multiplier peripheral device
   
   booth: booth_periph
   port map (
@@ -330,16 +315,7 @@ begin
         in_port => out_port,  			-- 8-bit data in from pBlaze
         write_strobe => write_strobe	-- strobed when pBlaze is writing to us                          
 		  );
-  
 
-  
 
 end Behavioral;
-
-------------------------------------------------------------------------------------------------------------------------------------
---
--- END OF FILE uart_clock.vhd
---
-------------------------------------------------------------------------------------------------------------------------------------
-
 
