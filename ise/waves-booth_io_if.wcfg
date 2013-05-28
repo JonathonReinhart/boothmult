@@ -3,7 +3,7 @@
    <wave_state>
    </wave_state>
    <db_ref_list>
-      <db_ref path="C:/Users/Jonathon/Classwork/boothmult/ise/working_dir/booth_io_if_TB_isim_beh.wdb" id="1" type="auto">
+      <db_ref path="C:/Users/Jonathon/Classwork/boothmult/ise/working_dir/booth_io_if_TB_isim_beh2.wdb" id="1" type="auto">
          <top_modules>
             <top_module name="booth_io_if_tb" />
             <top_module name="numeric_std" />
@@ -11,7 +11,7 @@
          </top_modules>
       </db_ref>
    </db_ref_list>
-   <WVObjectSize size="18" />
+   <WVObjectSize size="21" />
    <wvobject fp_name="divider18" type="divider">
       <obj_property name="label">PicoBlaze-Side Signals (driven)</obj_property>
       <obj_property name="DisplayName">label</obj_property>
@@ -58,6 +58,22 @@
    <wvobject fp_name="/booth_io_if_tb/port_data_from_if" type="array" db_ref_id="1">
       <obj_property name="ElementShortName">port_data_from_if[7:0]</obj_property>
       <obj_property name="ObjectShortName">port_data_from_if[7:0]</obj_property>
+      <obj_property name="Radix">HEXRADIX</obj_property>
+   </wvobject>
+   <wvobject fp_name="divider37" type="divider">
+      <obj_property name="label">Internal</obj_property>
+      <obj_property name="DisplayName">label</obj_property>
+      <obj_property name="BkColor">128 128 255</obj_property>
+      <obj_property name="TextColor">230 230 230</obj_property>
+   </wvobject>
+   <wvobject fp_name="/booth_io_if_tb/UUT/curreg" type="array" db_ref_id="1">
+      <obj_property name="ElementShortName">curreg[7:0]</obj_property>
+      <obj_property name="ObjectShortName">curreg[7:0]</obj_property>
+      <obj_property name="Radix">HEXRADIX</obj_property>
+   </wvobject>
+   <wvobject fp_name="/booth_io_if_tb/UUT/curreg_value" type="array" db_ref_id="1">
+      <obj_property name="ElementShortName">curreg_value[7:0]</obj_property>
+      <obj_property name="ObjectShortName">curreg_value[7:0]</obj_property>
       <obj_property name="Radix">HEXRADIX</obj_property>
    </wvobject>
    <wvobject fp_name="divider21" type="divider">
