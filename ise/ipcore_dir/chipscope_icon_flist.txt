@@ -1,0 +1,22 @@
+# Output products list for <chipscope_icon>
+_xmsgs\pn_parser.xmsgs
+chipscope_icon.asy
+chipscope_icon.ejp
+chipscope_icon.gise
+chipscope_icon.ngc
+chipscope_icon.vhd
+chipscope_icon.vho
+chipscope_icon.xco
+chipscope_icon.xise
+chipscope_icon\example_design\example_chipscope_icon.ucf
+chipscope_icon\example_design\example_chipscope_icon.vhd
+chipscope_icon\implement\chipscope_vio.xco
+chipscope_icon\implement\coregen.cgp
+chipscope_icon\implement\example_chipscope_icon.prj
+chipscope_icon\implement\example_chipscope_icon.xst
+chipscope_icon\implement\implement.bat
+chipscope_icon\implement\implement.sh
+chipscope_icon\implement\pa_implement.tcl
+chipscope_icon_flist.txt
+chipscope_icon_readme.txt
+chipscope_icon_xmdf.tcl

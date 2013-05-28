@@ -93,7 +93,24 @@ architecture Behavioral of top_level_entity is
         );
 	end component;
 	
+    
+    -- ChipScope ICON 
+    component chipscope_icon
+      PORT (
+        CONTROL0 : INOUT STD_LOGIC_VECTOR(35 DOWNTO 0));
+    end component;
 	
+    -- ChipScope ILA
+    component chipscope_ila
+      PORT (
+        CONTROL : INOUT STD_LOGIC_VECTOR(35 DOWNTO 0);
+        CLK : IN STD_LOGIC;
+        DATA : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+        TRIG0 : IN STD_LOGIC_VECTOR(7 DOWNTO 0);
+        TRIG1 : IN STD_LOGIC_VECTOR(7 DOWNTO 0));
+
+    end component;
+
 	
 ------------------------------------------------------------------------------------
 -- Signals	
@@ -135,6 +152,12 @@ signal clk55MHz : std_logic;
 
   
 signal data_from_booth : std_logic_vector (7 downto 0);
+
+-- Signals for ChipScope
+signal chipscope_control0 : std_logic_vector(35 downto 0);
+signal ila_trig0 : std_logic_vector(7 downto 0);
+signal ila_trig1 : std_logic_vector(7 downto 0);
+signal ila_data : std_logic_vector(31 downto 0);
 
 
 ------------------------------------------------------------------------------------
@@ -315,7 +338,37 @@ begin
         in_port => out_port,  			-- 8-bit data in from pBlaze
         write_strobe => write_strobe	-- strobed when pBlaze is writing to us                          
 		  );
+          
+          
+  ----------------------------------------------------------------------------------------------------------------------------------
+  --  ChipScope
 
+  icon : chipscope_icon
+  port map (
+    CONTROL0 => chipscope_control0);
+    
+  ila : chipscope_ila
+  port map (
+    CONTROL => chipscope_control0,
+    CLK => clk55MHz,
+    TRIG0 => ila_trig0,
+    TRIG1 => ila_trig1,
+    DATA => ila_data);
 
+  ila_trig0(0) <= read_strobe;                              -- Trig0 is the strobes
+  ila_trig0(1) <= write_strobe;
+  ila_trig0(2) <= read_strobe or write_strobe;
+  ila_trig0(7 downto 3) <= (others => '0');
+  
+  ila_trig1 <= port_id;                                     -- Trig1 is the port_id (we want to be able to filter on this)
+    
+  ila_data(7  downto 0)  <= port_id;
+  ila_data(15 downto 8)  <= in_port;
+  ila_data(23 downto 16) <= out_port;
+  ila_data(24) <= read_strobe;
+  ila_data(25) <= write_strobe;
+  
+    
 end Behavioral;
+
 
