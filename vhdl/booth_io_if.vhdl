@@ -91,9 +91,50 @@ architecture behavioral of booth_io_if is
     alias  STATUS0_BUSY         is STATUS(0);
     alias  STATUS1_PROD_VALID   is STATUS(1);
     
+    
+    signal index_port_active : boolean;      -- port_id is currently INDEX_PORT
+    signal data_port_active : boolean;       -- port_id is currently DATA_PORT
+    
+    signal curreg_value : std_logic_vector(7 downto 0);     -- the value of register[curreg]
+    
+    
+    
 begin
 
-    --P1 : process (clk, sys_rst) is
+
+    index_port_active <= (unsigned(port_id) = INDEX_PORT);
+    data_port_active  <= (unsigned(port_id) = DATA_PORT);
+
+
+    with curreg select
+        curreg_value <= 
+            MULTIPLICAND(7  downto 0 )  when REG_MULTIPLICAND_0,    -- LSB
+            MULTIPLICAND(15 downto 8 )  when REG_MULTIPLICAND_1,
+            MULTIPLICAND(23 downto 16)  when REG_MULTIPLICAND_2,    
+            MULTIPLICAND(31 downto 24)  when REG_MULTIPLICAND_3,    -- MSB
+            
+            MULTIPLIER(7  downto 0 )    when REG_MULTIPLIER_0,      -- LSB
+            MULTIPLIER(15 downto 8 )    when REG_MULTIPLIER_1,      
+            MULTIPLIER(23 downto 16)    when REG_MULTIPLIER_2,      
+            MULTIPLIER(31 downto 24)    when REG_MULTIPLIER_3,      -- MSB
+            
+            PRODUCT(7  downto 0 )       when REG_PRODUCT_0,         -- LSB
+            PRODUCT(15 downto 8 )       when REG_PRODUCT_1,
+            PRODUCT(23 downto 16)       when REG_PRODUCT_2,
+            PRODUCT(31 downto 24)       when REG_PRODUCT_3,
+            PRODUCT(39 downto 32)       when REG_PRODUCT_4,
+            PRODUCT(47 downto 40)       when REG_PRODUCT_5,
+            PRODUCT(55 downto 48)       when REG_PRODUCT_6,
+            PRODUCT(63 downto 56)       when REG_PRODUCT_7,         -- MSB
+            
+            STATUS                      when REG_STATUS,
+            (others => '1')             when others;                -- Invalid  
+            
+    out_port <= curreg          when index_port_active else
+                curreg_value    when data_port_active else
+                (others => '1');
+
+
     P1 : process (clk) is
         
         variable reset_regs_to_defaults : boolean;
@@ -115,41 +156,6 @@ begin
             
             --------------------------------------------------------------------------------------------
             -- pBlaze I/O
-            
-                -- Read (INPUT) operation from pBlaze - Assume this is always happening, ignore timing on read_strobe.
-                -- What port is pBlaze reading from
-                if (unsigned(port_id) = INDEX_PORT) then        -- Index port
-                    out_port <= curreg;
-                    
-                elsif (unsigned(port_id) = DATA_PORT) then      -- Data port
-                    -- Reply with data, depending on current register index
-                    case curreg is
-                        when REG_MULTIPLICAND_0     =>  out_port <= MULTIPLICAND(7  downto 0 ); -- LSB
-                        when REG_MULTIPLICAND_1     =>  out_port <= MULTIPLICAND(15 downto 8 );
-                        when REG_MULTIPLICAND_2     =>  out_port <= MULTIPLICAND(23 downto 16);
-                        when REG_MULTIPLICAND_3     =>  out_port <= MULTIPLICAND(31 downto 24); -- MSB
-                        
-                        when REG_MULTIPLIER_0       =>  out_port <= MULTIPLIER(7  downto 0 );   -- LSB
-                        when REG_MULTIPLIER_1       =>  out_port <= MULTIPLIER(15 downto 8 );
-                        when REG_MULTIPLIER_2       =>  out_port <= MULTIPLIER(23 downto 16);
-                        when REG_MULTIPLIER_3       =>  out_port <= MULTIPLIER(31 downto 24);   -- MSB
-                        
-                        when REG_PRODUCT_0          =>  out_port <= PRODUCT(7  downto 0 );      -- LSB
-                        when REG_PRODUCT_1          =>  out_port <= PRODUCT(15 downto 8 );
-                        when REG_PRODUCT_2          =>  out_port <= PRODUCT(23 downto 16);
-                        when REG_PRODUCT_3          =>  out_port <= PRODUCT(31 downto 24);
-                        when REG_PRODUCT_4          =>  out_port <= PRODUCT(39 downto 32);
-                        when REG_PRODUCT_5          =>  out_port <= PRODUCT(47 downto 40);
-                        when REG_PRODUCT_6          =>  out_port <= PRODUCT(55 downto 48);
-                        when REG_PRODUCT_7          =>  out_port <= PRODUCT(63 downto 56);      -- MSB
-                        
-                        when REG_STATUS             =>  out_port <= STATUS;                        
-                        when others                 =>  out_port <= (others => '1');            -- Invalid
-                    end case;
-                    
-                else    -- Port not for us!
-                    out_port <= (others => 'Z');
-                end if;
                     
                 -- Write (OUTPUT) operation from pBlaze?
                 if (write_strobe='1') then
@@ -246,10 +252,9 @@ begin
                 PRODUCT             <= (others => '1');
                 STATUS              <= (others => '0');
                 start_cmd <= '0';
-                out_port <= (others => 'Z');
 		
-					 start_cmd_ct := 0;
-					 -- Don't reset 'rst_cmd_ct', it must remain active to drive rst_cmd.
+                start_cmd_ct := 0;
+                -- Don't reset 'rst_cmd_ct', it must remain active to drive rst_cmd.
             end if;
         
         end if;  -- rising_edge(clk)
