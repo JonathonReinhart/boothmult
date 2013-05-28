@@ -1,0 +1,176 @@
+;---------------------------------------------------------------------------------------------------
+;    Booth Multiplier - PicoBlze I/O project
+;    AFIT - CSCE 587 - 2013 Spring
+;    Jonathon Reinhart, Scott Dalrymple
+;
+;    TEST CODE - For simulating top level entity
+;---------------------------------------------------------------------------------------------------
+
+;Port definitions
+CONSTANT BOOTH_INDEX_PORT,  A0          ; Booth Multiplier peripheral - Index port
+CONSTANT BOOTH_DATA_PORT,   A1          ;   - Data port
+
+;---------------------------------------------------------------------------------------------------
+; Begin Code
+
+; Execution begins here at address 0x00
+; Initialise the system
+cold_start: 
+
+    ; Write 0xDEADBEEF to MULTIPLIER
+    LOAD    s7, DE
+    LOAD    s6, AD
+    LOAD    s5, BE
+    LOAD    s4, EF
+    LOAD    s0, REG_MULTIPLIER0
+    CALL    booth_write_dword                   ; Write s7:s4 to MULTIPLIER
+    
+    ; Read MULTIPLIER
+    LOAD    s0, REG_MULTIPLIER0
+    CALL    booth_read_dword                    ; Read MULTIPLIER to s7:s4
+
+blackhole:
+    JUMP    blackhole
+    
+    ;CALL booth_start
+    ;CALL booth_wait
+    
+
+;------------------------------
+; Booth multiplier 
+
+CONSTANT REG_MULTIPLICAND0,     00  ; LSB
+CONSTANT REG_MULTIPLICAND1,     01
+CONSTANT REG_MULTIPLICAND2,     02
+CONSTANT REG_MULTIPLICAND3,     03  ; MSB
+
+CONSTANT REG_MULTIPLIER0,       04  ; LSB
+CONSTANT REG_MULTIPLIER1,       05
+CONSTANT REG_MULTIPLIER2,       06
+CONSTANT REG_MULTIPLIER3,       07  ; MSB
+
+CONSTANT REG_PRODUCT0,          08  ; LSB
+CONSTANT REG_PRODUCT1,          09
+CONSTANT REG_PRODUCT2,          0A
+CONSTANT REG_PRODUCT3,          0B
+CONSTANT REG_PRODUCT4,          0C
+CONSTANT REG_PRODUCT5,          0D
+CONSTANT REG_PRODUCT6,          0E
+CONSTANT REG_PRODUCT7,          0F
+
+CONSTANT REG_CTRL,              10
+CONSTANT    CTRL_RESET,         01  ; Bit 0 = RESET
+CONSTANT 	CTRL_START,         02  ; Bit 1 = START
+
+CONSTANT REG_STATUS,            11
+CONSTANT    STATUS_BUSY,        01  ; Bit 0 = BUSY
+CONSTANT    STATUS_PROD_VALID,  02  ; Bit 1 = PROD_VALID
+
+
+; Reads a register in the booth multiplier
+; Parameters:
+;   s0 - Register index to read
+; Return value:
+;   s0 - Read register value
+booth_read_reg:
+    OUTPUT  s0, BOOTH_INDEX_PORT
+    ;LOAD    s0, s0                  ; No-op
+    INPUT   s0, BOOTH_DATA_PORT
+    RETURN
+    
+; Writes a register in the booth multiplier
+; Parameters:
+;   s0 - Register index to write
+;   s1 - Register value to write
+booth_write_reg:
+    OUTPUT  s0, BOOTH_INDEX_PORT
+    OUTPUT  s1, BOOTH_DATA_PORT
+    RETURN
+    
+; Resets the booth multiplier
+booth_reset:
+    LOAD    s0, REG_CTRL
+    LOAD    s1, CTRL_RESET
+    JUMP    booth_write_reg     ; Tail-call
+    
+; Starts a multiplication operation in the booth multiplier
+booth_start:
+    LOAD    s0, REG_CTRL
+    LOAD    s1, CTRL_START
+    JUMP    booth_write_reg     ; Tail-call
+    
+; Waits for an on-going multiplication to finish     
+booth_wait:
+    ; Set register = REG_STATUS
+    LOAD    s0, REG_STATUS
+    OUTPUT  s0, BOOTH_INDEX_PORT
+booth_wait__loop:
+    INPUT   s0, BOOTH_DATA_PORT
+    TEST    s0, STATUS_BUSY
+    JUMP NZ, booth_wait__loop
+    RETURN
+    
+
+; Reads a 4-byte integer from 4 consecutive registers in the Booth multiplier
+; Parameters:
+;   s0  - Starting register number to read from (LSB)
+; Return:
+;   s4 = reg[s0+0]  (LSB)
+;   s5 = reg[s0+1]
+;   s6 = reg[s0+2]
+;   s7 = reg[s0+3]  (MSB)
+booth_read_dword:
+    LOAD    s1, s0
+    
+    CALL    booth_read_reg
+    LOAD    s4, s0
+    
+    LOAD    s0, s1
+    ADD     s0, 01
+    CALL    booth_read_reg
+    LOAD    s5, s0
+    
+    LOAD    s0, s1
+    ADD     s0, 02
+    CALL    booth_read_reg
+    LOAD    s6, s0    
+    
+    LOAD    s0, s1
+    ADD     s0, 03
+    CALL    booth_read_reg
+    LOAD    s7, s0
+    
+    RETURN
+    
+    
+; Writes a 4-byte integer to 4 consecutive registers in the Booth multiplier
+; Parameters:
+;   s0  - Starting register number to write to (LSB)
+;   reg[s0+0] = s4  (LSB)
+;   reg[s0+1] = s5
+;   reg[s0+2] = s6
+;   reg[s0+3] = s7  (MSB)
+booth_write_dword:
+    LOAD    s2, s0
+
+    LOAD    s1, s4      ; value
+    CALL    booth_write_reg
+
+    LOAD    s0, s2
+    ADD     s0, 01      ; reg
+    LOAD    s1, s5      ; value
+    CALL    booth_write_reg
+
+    LOAD    s0, s2
+    ADD     s0, 02      ; reg
+    LOAD    s1, s6      ; value
+    CALL    booth_write_reg
+
+    LOAD    s0, s2
+    ADD     s0, 03      ; reg
+    LOAD    s1, s7      ; value
+    CALL    booth_write_reg
+
+    RETURN
+    
+    
