@@ -17,6 +17,8 @@ CONSTANT BOOTH_DATA_PORT,   A1          ;   - Data port
 ; Initialise the system
 cold_start: 
 
+    CALL    booth_reset
+
     ; Write 0xDEADBEEF to MULTIPLIER
     LOAD    s7, DE
     LOAD    s6, AD
@@ -28,12 +30,35 @@ cold_start:
     ; Read MULTIPLIER
     LOAD    s0, REG_MULTIPLIER0
     CALL    booth_read_dword                    ; Read MULTIPLIER to s7:s4
+    
+    
+    ; Write 0x1337D00D to MULTIPLICAND
+    LOAD    s7, 13
+    LOAD    s6, 37
+    LOAD    s5, D0
+    LOAD    s4, 0D
+    LOAD    s0, REG_MULTIPLICAND0
+    CALL    booth_write_dword                   ; Write s7:s4 to MULTIPLICAND
+    
+    ; Read MULTIPLICAND
+    LOAD    s0, REG_MULTIPLICAND0
+    CALL    booth_read_dword                    ; Read MULTIPLICAND to s7:s4
+    
+    CALL booth_start
 
+    CALL booth_wait
+    
+    ; Read PRODUCT ------ Should equal 0x10b771783c4de223
+    LOAD    s0, REG_PRODUCT4
+    CALL    booth_read_dword                    ; Read PRODUCT[63:32] to s7:s4
+    LOAD    s0, REG_PRODUCT0
+    CALL    booth_read_dword                    ; Read PRODUCT[31:00] to s7:s4
+
+    
 blackhole:
     JUMP    blackhole
     
-    ;CALL booth_start
-    ;CALL booth_wait
+
     
 
 ;------------------------------
